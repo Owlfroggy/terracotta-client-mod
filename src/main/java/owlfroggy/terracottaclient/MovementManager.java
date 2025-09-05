@@ -1,0 +1,75 @@
+package owlfroggy.terracottaclient;
+
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.scoreboard.Team;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextColor;
+import net.minecraft.util.Formatting;
+import net.minecraft.util.math.Vec3d;
+import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
+
+import java.util.Objects;
+
+public class MovementManager extends Manager implements TickEndReceiver {
+    enum MovementState {
+        NOT_MOVING,
+        /**
+         *Move the player to a y level that's between the code chest and the next layer
+         */
+        AVOID_CODE,
+        ALIGN_XZ,
+        ALIGN_Y,
+    }
+
+    public static final double MOVEMENT_SPEED = 50;
+
+    private Vec3d destinationPos;
+    private Vec3d assumedPlayerPos;
+    private MovementState currentMovementState = MovementState.NOT_MOVING;
+
+    @Override
+    public void onTickEnd(MinecraftClient client) {
+        if (TCClient.MCI.player == null) return;
+        if (currentMovementState == MovementState.NOT_MOVING) return;
+
+        Vec3d targetPos;
+        switch (currentMovementState) {
+            case AVOID_CODE -> targetPos = new Vec3d(assumedPlayerPos.x, assumedPlayerPos.y - (assumedPlayerPos.y%5) + 2.2, assumedPlayerPos.z);
+            case ALIGN_XZ -> targetPos = new Vec3d(destinationPos.x, assumedPlayerPos.y, destinationPos.z);
+            case ALIGN_Y -> targetPos = new Vec3d(assumedPlayerPos.x, destinationPos.y, assumedPlayerPos.z);
+            default -> { return; }
+        }
+
+        if (!TCClient.MCI.player.getAbilities().flying) {
+            TCClient.MCI.player.getAbilities().flying = true;
+            TCClient.MCI.player.sendAbilitiesUpdate();
+        }
+
+        double dist = targetPos.distanceTo(assumedPlayerPos);
+        Vec3d movementVec = targetPos.subtract(assumedPlayerPos).normalize().multiply(Math.min(dist,MOVEMENT_SPEED));
+        assumedPlayerPos = assumedPlayerPos.add(movementVec);
+        TCClient.MCI.player.setPosition(assumedPlayerPos);
+
+        if (dist < MOVEMENT_SPEED) {
+            currentMovementState = MovementState.values()[(currentMovementState.ordinal() + 1) % 4];
+            TCClient.MCI.player.setVelocity(0,0,0);
+        }
+    }
+
+    /**
+     * Note: this function assumes that the target is not in a block
+     * @param plotSpaceDestination The position to move to
+     */
+    public void setMovementDestination(Vec3d plotSpaceDestination) {
+        if (TCClient.MCI.player == null) return;
+
+        currentMovementState = MovementState.AVOID_CODE;
+        destinationPos = TCClient.DF_STATE.toWorldSpace(plotSpaceDestination);
+        assumedPlayerPos = TCClient.MCI.player.getPos();
+    }
+}

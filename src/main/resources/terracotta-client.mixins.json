@@ -1,0 +1,17 @@
+{
+	"required": true,
+	"package": "owlfroggy.terracottaclient.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+      "ChatMessageInterceptor",
+      "TeleportInterceptor",
+      "SetPlayerInvInterceptor",
+      "ScreenSlotUpdateInterceptor"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
