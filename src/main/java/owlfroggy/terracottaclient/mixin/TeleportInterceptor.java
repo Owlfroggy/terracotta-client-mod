@@ -10,7 +10,7 @@ import owlfroggy.terracottaclient.TCClient;
 
 @Mixin(ClientPlayNetworkHandler.class)
 public class TeleportInterceptor {
-	@Inject(method = "onPlayerPositionLook", at = @At("HEAD"))
+	@Inject(method = "onPlayerPositionLook", at = @At("RETURN"))
 	private void init(PlayerPositionLookS2CPacket packet, CallbackInfo info) {
         if (TCClient.MCI.player != null) {
             TCClient.fireTeleportReceivers(packet.change().position(),TCClient.MCI.player.getPos());

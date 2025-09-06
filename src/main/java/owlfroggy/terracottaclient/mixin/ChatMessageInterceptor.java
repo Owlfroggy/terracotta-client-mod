@@ -16,10 +16,14 @@ public class ChatMessageInterceptor {
 	private void init(GameMessageS2CPacket packet, CallbackInfo info) {
         if (!packet.overlay()) {
             boolean shouldSuppressLocate = TCClient.DF_STATE.modeRefreshQueued;
+            boolean shouldSupprsesOOB = TCClient.DF_STATE.plotScanActive;
+
             TCClient.fireChatMessageReceivers(packet.content());
-            if (shouldSuppressLocate && TCClient.DF_STATE.isMessageLocateResult(packet.content())) {
+
+            if (shouldSuppressLocate && TCClient.DF_STATE.isMessageLocateResult(packet.content()))
                 info.cancel();
-            }
+            if (shouldSupprsesOOB && TCClient.DF_STATE.isMessageOutOfBoundsError(packet.content()))
+                info.cancel();
         }
 	}
 }

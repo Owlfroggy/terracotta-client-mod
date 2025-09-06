@@ -36,7 +36,10 @@ public class TCClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        DF_STATE = new DFState();
+        COMMAND_MANAGER = setupManager(new ChatCommandManager());
+        DF_STATE = setupManager(new DFState());
+        MOVEMENT_MANAGER = setupManager(new MovementManager());
+
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
         // Proceed with mild caution.
@@ -48,15 +51,19 @@ public class TCClient implements ClientModInitializer {
             }));
         });
 
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager.literal("rescanplot").executes(context -> {
+                context.getSource().sendFeedback(Text.literal("Rescanning plot..."));
+                DF_STATE.scanPlot();
+                return 1;
+            }));
+        });
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             for (TickEndReceiver receiver : tickEndReceivers) {
                 receiver.onTickEnd(client);
             }
         });
-
-        COMMAND_MANAGER = setupManager(new ChatCommandManager());
-        DF_STATE = setupManager(new DFState());
-        MOVEMENT_MANAGER = setupManager(new MovementManager());
     }
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
