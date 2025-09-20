@@ -10,15 +10,18 @@ import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import owlfroggy.terracottaclient.gameinterface.ChatMessageReceiver;
 import owlfroggy.terracottaclient.gameinterface.InvChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,10 +40,24 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
         MASSIVE,
         MEGA
     }
-    private enum PlotScanState {
-
+    public enum CodespaceCorner {
+        FRONT_LEFT,
+        FRONT_RIGHT,
+        BACK_LEFT,
+        BACK_RIGHT
     }
 
+    public static final HashMap<PlotType, Integer> CODESPACE_Z_SIZES = new HashMap<>(Map.of(
+        PlotType.BASIC, 51,
+        PlotType.LARGE, 101,
+        PlotType.MASSIVE, 301,
+        PlotType.MEGA, 301
+    ));public static final HashMap<PlotType, Integer> CODESPACE_X_SIZES = new HashMap<>(Map.of(
+        PlotType.BASIC, 20,
+        PlotType.LARGE, 20,
+        PlotType.MASSIVE, 20,
+        PlotType.MEGA, 302
+    ));
     private static final Pattern MODE_REGEX = Pattern.compile("You are currently (?:at )?(\\w+)");
     private static final Pattern PLOT_REGEX = Pattern.compile("^→ (.+) \\[(\\d+)");
     private static final double TP_MAGIC_Y_VALUE = 52.15763;
@@ -75,6 +92,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
 
     private Vec3d plotOrigin;
     public Vec3d getPlotOrigin() {return plotOrigin;}
+    public Vec3i getIntPlotOrigin() {return new Vec3i((int)plotOrigin.x, (int)plotOrigin.y, (int)plotOrigin.z);}
 
     private Mode mode = Mode.SPAWN;
     public Mode getMode() {return mode;}
@@ -89,6 +107,58 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
     public PlotType getPlotType() {return plotType;};
 
     private CompletableFuture<Optional<Vec3d>> ptpFuture;
+    private AtomicReference<Vec3d> plotScanTargetPos = new AtomicReference<Vec3d>(null);
+
+    public Vec3d getPlotCorner(CodespaceCorner corner){
+        if (plotOrigin == null)
+            throw new RuntimeException("Cannot get plot corner because plot origin is unknown");
+
+        Vec3d coords = plotOrigin;
+        if (corner == CodespaceCorner.FRONT_RIGHT || corner == CodespaceCorner.BACK_RIGHT) {
+            coords = coords.add(-1,0,CODESPACE_Z_SIZES.get(plotType));
+        }
+        if (corner == CodespaceCorner.BACK_LEFT || corner == CodespaceCorner.BACK_RIGHT) {
+            coords = coords.add(-CODESPACE_X_SIZES.get(plotType)-1,0,0);
+        }
+        return coords;
+    }
+
+    public boolean isWorldPosInCodespace(Vec3d worldPos) {
+        if (plotOrigin == null)
+            throw new RuntimeException("Cannot get plot corner because plot origin is unknown");
+
+        Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+        Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+
+        if (worldPos.x < minusCorner.x || worldPos.z < minusCorner.z) return false;
+        if (worldPos.x > plusCorner.x || worldPos.z > plusCorner.z) return false;
+
+        return true;
+    }
+    public boolean isWorldPosInCodespace(BlockPos worldPos) {
+        return isWorldPosInCodespace(new Vec3d((double)worldPos.getX(), (double)worldPos.getY(), (double)worldPos.getZ()));
+    }
+
+    public BlockPos clampWorldPosToCodespace(BlockPos worldPos) {
+        Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+        Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+
+        return new BlockPos(
+            (int)Math.clamp(worldPos.getX(),minusCorner.x,plusCorner.x),
+            worldPos.getY(),
+            (int)Math.clamp(worldPos.getZ(),minusCorner.z,plusCorner.z)
+        );
+    }
+    public Vec3d clampWorldPosToCodespace(Vec3d worldPos) {
+        Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+        Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+
+        return new Vec3d(
+            Math.clamp(worldPos.getX(),minusCorner.x,plusCorner.x),
+            worldPos.getY(),
+            Math.clamp(worldPos.getZ(),minusCorner.z,plusCorner.z)
+        );
+    }
 
     public void queueModeRefresh() {
         if (modeRefreshQueued) return;
@@ -100,68 +170,112 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
      * Updates plot bounds, size, and code contents
      */
     public void scanPlot() {
+        plotScanActive = false;
         if (plotScanActive) {return;}
         plotScanActive = true;
+
         CompletableFuture.runAsync(() -> {
-            PlotType currentSizeGuess = PlotType.BASIC;
-            Optional<Vec3d> teleportResult;
-
-            // get plot origin
-            TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp 0.0 %s 0.0",TP_MAGIC_Y_VALUE));
-            ptpFuture = new CompletableFuture<>();
             try {
-                Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
-                if (result.isEmpty()) { throw new RuntimeException("Failed to get plot origin"); }
-                plotOrigin = result.get().multiply(1,0,1);
-            } catch (Exception e) {
-                TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})",e.toString());
-                plotScanActive = false;
-                return;
-            }
+                PlotType currentSizeGuess = PlotType.BASIC;
+                Optional<Vec3d> teleportResult = Optional.empty();
+                Vec3d plotOriginGuess;
 
-            // get plot size
-            sizeGuessLoop: while (getMode() == Mode.DEV) {
-                String command;
-                switch (currentSizeGuess) {
-                    case PlotType.BASIC -> command = String.format("ptp -1 %s 51",TP_MAGIC_Y_VALUE);
-                    case PlotType.LARGE -> command = String.format("ptp -1 %s 101",TP_MAGIC_Y_VALUE);
-                    case PlotType.MASSIVE -> command = String.format("ptp -301 %s 1",TP_MAGIC_Y_VALUE);
-                    default -> {
-                        break sizeGuessLoop;
-                    }
-                }
-
-                TCClient.COMMAND_MANAGER.queueCommand(command);
+                // get plot origin
+                plotScanTargetPos.set(null);
                 ptpFuture = new CompletableFuture<>();
+                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp 0.0 %s 0.0",TP_MAGIC_Y_VALUE));
                 try {
-                    teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
+                    Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
+                    if (result.isEmpty()) { throw new RuntimeException("Failed to get plot origin"); }
+                    plotOriginGuess = result.get().multiply(1, 0, 1);
                 } catch (Exception e) {
-                    TCClient.LOGGER.warn("Plot scan failed during size fetch due to not receiving a teleport response ({})", e.toString());
+                    TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})",e.toString());
                     plotScanActive = false;
                     return;
                 }
 
-                // if teleport target was out of bounds, the plot size has been found
-                if (teleportResult.isEmpty()) {
-                    break;
-                } else {
-                    currentSizeGuess = PlotType.values()[currentSizeGuess.ordinal()+1];
-                }
-            }
+                // get plot size
+                sizeGuessLoop: while (getMode() == Mode.DEV) {
+                    Vec3d plotSpacePos;
+                    switch (currentSizeGuess) {
+                        case PlotType.BASIC -> plotSpacePos = new Vec3d(-1,TP_MAGIC_Y_VALUE,51);
+                        case PlotType.LARGE -> plotSpacePos = new Vec3d(-1,TP_MAGIC_Y_VALUE,101);
+                        case PlotType.MASSIVE -> plotSpacePos = new Vec3d(-301,TP_MAGIC_Y_VALUE,1);
+                        default -> {
+                            break sizeGuessLoop;
+                        }
+                    }
 
-            plotType = currentSizeGuess;
-            plotScanActive = false;
-            TCClient.MCI.player.sendMessage(Text.literal("Detected plot size:" + currentSizeGuess), false);
-            TCClient.MCI.player.sendMessage(Text.literal("Detected plot origin:" + plotOrigin), false);
+                    plotScanTargetPos.set(plotSpacePos.add(plotOriginGuess));
+                    String command = String.format("ptp %s %s %s", plotSpacePos.x, plotSpacePos.y, plotSpacePos.z);
+
+                    TCClient.COMMAND_MANAGER.queueCommand(command);
+                    ptpFuture = new CompletableFuture<>();
+                    try {
+                        teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
+                    } catch (Exception e) {
+                        TCClient.LOGGER.warn("Plot scan failed during size fetch due to not receiving a teleport response ({})", e.toString());
+                        plotScanActive = false;
+                        return;
+                    }
+
+                    // if teleport target was out of bounds, the plot size has been found
+                    if (teleportResult.isEmpty()) {
+                        break;
+                    } else {
+                        currentSizeGuess = PlotType.values()[currentSizeGuess.ordinal()+1];
+                    }
+                }
+
+                plotOrigin = plotOriginGuess;
+                plotType = currentSizeGuess;
+
+                Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+                Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+
+                int minusCornerChunkX = (int)(minusCorner.x/16);
+                int minusCornerChunkZ = (int)(minusCorner.z/16);
+                int plusCornerChunkX = (int)(plusCorner.x/16);
+                int plusCornerChunkZ = (int)(plusCorner.z/16);
+
+                // queue every chunk in the codespace for a rescan
+                for (int cx = minusCornerChunkX; cx <= plusCornerChunkX; cx++){
+                    for (int cz = minusCornerChunkZ; cz <= plusCornerChunkZ; cz++) {
+                        TCClient.CODESPACE_MANAGER.queueChunkForScan(new ChunkPos(cx,cz));
+                    }
+                }
+
+                for (ChunkPos chunkPos : TCClient.loadedChunks.keySet().toArray(new ChunkPos[0])) {
+                    TCClient.CODESPACE_MANAGER.scanChunk(chunkPos);
+                }
+
+                TCClient.MCI.player.sendMessage(Text.literal("Detected plot size:" + currentSizeGuess), false);
+                TCClient.MCI.player.sendMessage(Text.literal("Detected plot origin:" + plotOrigin), false);
+                plotScanActive = false;
+            } catch (Exception e) {
+                TCClient.LOGGER.error("Error while scanning plot",e);
+            }
         });
     }
 
     public Vec3d toPlotSpace(Vec3d worldSpacePos) {
         return worldSpacePos.subtract(getPlotOrigin());
     }
+    public Vec3i toPlotSpace(Vec3i worldSpacePos) {
+        return worldSpacePos.subtract(getIntPlotOrigin());
+    }
+    public Vec3i toPlotSpace(BlockPos worldSpacePos) {
+        return worldSpacePos.subtract(getIntPlotOrigin());
+    }
 
     public Vec3d toWorldSpace(Vec3d plotSpacePos) {
         return plotSpacePos.add(getPlotOrigin());
+    }
+    public Vec3i toWorldSpace(Vec3i plotSpacePos) {
+        return plotSpacePos.add(getIntPlotOrigin());
+    }
+    public Vec3i toWorldSpace(BlockPos plotSpacePos) {
+        return plotSpacePos.add(getIntPlotOrigin());
     }
 
     public boolean isMessageLocateResult(Text message) {
@@ -179,13 +293,12 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
         return message.equals(OUT_OF_BOUNDS_TEXT);
     }
 
-    public void onJoin() {
-        TCClient.LOGGER.info("askjhdfg");
-        queueModeRefresh();
-    }
-
     public void onTeleported(Vec3d newPos, Vec3d oldPos) {
-        if (ptpFuture != null && !ptpFuture.isDone() && newPos.y == TP_MAGIC_Y_VALUE) {
+        if (
+            ptpFuture != null && !ptpFuture.isDone() &&
+            newPos.y == TP_MAGIC_Y_VALUE &&
+            (plotScanTargetPos.get() == null || newPos.isInRange(plotScanTargetPos.get(),0.01))
+        ) {
             ptpFuture.complete(Optional.of(newPos));
         }
 //        TCClient.MCI.player.sendMessage(Text.literal(newPos.toString()),false);
@@ -227,7 +340,6 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
         if (ptpFuture != null && !ptpFuture.isDone() && isMessageOutOfBoundsError(message)) {
             ptpFuture.complete(Optional.empty());
         }
-        TCClient.LOGGER.info(message.toString());
 
         // /locate parsing checks the click event since that cannot be faked by plots
         locateParser: if (isMessageLocateResult(message)) {
@@ -250,6 +362,8 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
             if (mode == Mode.SPAWN) {
                 plotId = -1;
                 plotName = "Spawn";
+                plotOrigin = null;
+                plotType = PlotType.UNKNOWN;
             } else {
                 Matcher plotMatcher = PLOT_REGEX.matcher(messageStrLines[3]);
                 if (!plotMatcher.find()) break locateParser;

@@ -11,11 +11,13 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
+import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
 import java.util.Objects;
+import java.util.Optional;
 
-public class MovementManager extends Manager implements TickEndReceiver {
+public class MovementManager extends Manager implements TickEndReceiver, TeleportReceiver {
     enum MovementState {
         NOT_MOVING,
         /**
@@ -26,15 +28,17 @@ public class MovementManager extends Manager implements TickEndReceiver {
         ALIGN_Y,
     }
 
-    public static final double MOVEMENT_SPEED = 50;
+    public static final double MOVEMENT_SPEED = 5; //50;
 
     private Vec3d destinationPos;
     private Vec3d assumedPlayerPos;
     private MovementState currentMovementState = MovementState.NOT_MOVING;
+    private String currentMovementId = null;
 
     @Override
     public void onTickEnd(MinecraftClient client) {
         if (TCClient.MCI.player == null) return;
+        if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) currentMovementState = MovementState.NOT_MOVING;
         if (currentMovementState == MovementState.NOT_MOVING) return;
 
         Vec3d targetPos;
@@ -61,15 +65,41 @@ public class MovementManager extends Manager implements TickEndReceiver {
         }
     }
 
+    public void onTeleported(Vec3d newPos, Vec3d oldPos) {
+        if (currentMovementState != MovementState.NOT_MOVING) {
+            assumedPlayerPos = newPos;
+            currentMovementState = MovementState.AVOID_CODE;
+        }
+    }
+
     /**
      * Note: this function assumes that the target is not in a block
      * @param plotSpaceDestination The position to move to
      */
-    public void setMovementDestination(Vec3d plotSpaceDestination) {
+    public void setMovementDestination(Vec3d plotSpaceDestination, String movementId) {
         if (TCClient.MCI.player == null) return;
 
+        currentMovementId = movementId;
         currentMovementState = MovementState.AVOID_CODE;
         destinationPos = TCClient.DF_STATE.toWorldSpace(plotSpaceDestination);
         assumedPlayerPos = TCClient.MCI.player.getPos();
+    }
+    public void setMovementDestination(Vec3d plotSpaceDestination) {
+        setMovementDestination(plotSpaceDestination, null);
+    }
+
+    public void cancelMovement(String movementId) {
+        if (currentMovementId != null && movementId != currentMovementId) { return; }
+        currentMovementState = MovementState.NOT_MOVING;
+    }
+    public void cancelMovement() {
+        cancelMovement(null);
+    }
+
+    public boolean isMoving() {
+        return currentMovementState != MovementState.NOT_MOVING;
+    }
+    public String getCurrentMovementId() {
+        return currentMovementId;
     }
 }

@@ -6,7 +6,10 @@
       "ChatMessageInterceptor",
       "TeleportInterceptor",
       "SetPlayerInvInterceptor",
-      "ScreenSlotUpdateInterceptor"
+      "ScreenSlotUpdateInterceptor",
+      "ChunkLoadInterceptor",
+      "ChunkDeltaInterceptor",
+      "BlockEntityUpdateInterceptor"
 	],
 	"injectors": {
 		"defaultRequire": 1
