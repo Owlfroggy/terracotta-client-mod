@@ -20,6 +20,8 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import owlfroggy.terracottaclient.codespacemanager.CachedTemplate;
+import owlfroggy.terracottaclient.codespacemanager.CodespaceFloor;
+import owlfroggy.terracottaclient.codespacemanager.CodespaceRow;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
 import owlfroggy.terracottaclient.gameinterface.ModeChangeReceiver;
@@ -42,11 +44,22 @@ public class CodespaceManager extends Manager implements ChunkReceiver, ModeChan
         TemplateType.FUNCTION, new HashMap<>(),
         TemplateType.PROCESS, new HashMap<>()
     ));
+    public final HashMap<java.lang.Integer, CodespaceFloor> floors = new HashMap<>();
 
     private final LinkedList<BlockPos> queuedBlockRescans = new LinkedList<>();
     private final LinkedList<ChunkPos> queuedChunkRescans = new LinkedList<>();
 
     private ChunkPos nextChunkToScan = null;
+
+    public CodespaceFloor getFloor(int yLevel) {
+        if (floors.containsKey(yLevel)) {
+            return floors.get(yLevel);
+        } else {
+            CodespaceFloor floor = new CodespaceFloor(yLevel);
+            floors.put(yLevel, floor);
+            return floor;
+        }
+    }
 
     private void addTemplate(TemplateType type, String name, Vec3i plotSpacePos) {
         CachedTemplate template = new CachedTemplate(type,name,plotSpacePos);
@@ -58,6 +71,8 @@ public class CodespaceManager extends Manager implements ChunkReceiver, ModeChan
         if (!templatesByName.get(type).containsKey(name))
             templatesByName.get(type).put(name,new ArrayList<>());
         templatesByName.get(type).get(name).add(template);
+
+        getFloor(plotSpacePos.getY()).getRow(plotSpacePos.getX()).addTemplate(template);
     }
 
     private void removeTemplate(CachedTemplate template) {
@@ -66,6 +81,25 @@ public class CodespaceManager extends Manager implements ChunkReceiver, ModeChan
         templatesByName.get(template.type).get(template.name).remove(template);
         if (templatesByName.get(template.type).get(template.name).isEmpty())
             templatesByName.get(template.type).remove(template.name);
+
+        CodespaceFloor floor = getFloor(template.plotSpacePos.getY());
+        CodespaceRow row = floor.getRow(template.plotSpacePos.getX());
+        row.removeTemplate(template);
+        if (row.templates.isEmpty()) {
+            floor.rows.remove(row.xPos, row);
+            if (floor.rows.isEmpty()) {
+                floors.remove(floor.yLevel, floor);
+            }
+        }
+    }
+
+    private void clearTemplates() {
+        templatesByLocation.clear();
+        for (HashMap<String,ArrayList<CachedTemplate>> templateMap : templatesByName.values()) {
+            templateMap.clear();
+        }
+        floors.clear();
+        queuedChunkRescans.clear();
     }
 
     /**
@@ -163,13 +197,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, ModeChan
     @Override
     public void onModeChanged(DFState.Mode newMode) {
         if (newMode == DFState.Mode.SPAWN) {
-            templatesByLocation.clear();
-            for (HashMap<String,ArrayList<CachedTemplate>> templateMap : templatesByName.values()) {
-                templateMap.clear();
-            }
-        }
-        if (newMode != DFState.Mode.DEV) {
-            queuedChunkRescans.clear();
+            clearTemplates();
         }
     }
 

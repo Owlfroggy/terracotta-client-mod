@@ -79,6 +79,9 @@ public class TCClient implements ClientModInitializer {
                 context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.templatesByLocation.toString()));
                 context.getSource().sendFeedback(Text.literal("BY NAME-----------"));
                 context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.templatesByName.toString()));
+                context.getSource().sendFeedback(Text.literal("BY FLOOR-----------"));
+                context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.floors.toString()));
+
                 int numFunctions = 0;
                 for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.FUNCTION).keySet()) {
                     numFunctions += CODESPACE_MANAGER.templatesByName.get(TemplateType.FUNCTION).get(name).size();
