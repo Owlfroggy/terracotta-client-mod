@@ -25,11 +25,12 @@ import owlfroggy.terracottaclient.codespacemanager.CodespaceRow;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
 import owlfroggy.terracottaclient.gameinterface.ModeChangeReceiver;
+import owlfroggy.terracottaclient.gameinterface.PlotChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
 import java.util.*;
 
-public class CodespaceManager extends Manager implements ChunkReceiver, ModeChangeReceiver, TickEndReceiver {
+public class CodespaceManager extends Manager implements ChunkReceiver, PlotChangeReceiver, TickEndReceiver {
     private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
         "PLAYER EVENT", TemplateType.PLAYER_EVENT,
         "ENTITY EVENT", TemplateType.ENTITY_EVENT,
@@ -195,10 +196,8 @@ public class CodespaceManager extends Manager implements ChunkReceiver, ModeChan
     }
 
     @Override
-    public void onModeChanged(DFState.Mode newMode) {
-        if (newMode == DFState.Mode.SPAWN) {
-            clearTemplates();
-        }
+    public void onPlotChanged(int plotId, DFState.Mode mode) {
+        clearTemplates();
     }
 
     @Override

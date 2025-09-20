@@ -45,6 +45,7 @@ public class TCClient implements ClientModInitializer {
     private static final ArrayList<InvChangeReceiver> invChangeReceivers = new ArrayList<>();
     private static final ArrayList<TickEndReceiver> tickEndReceivers = new ArrayList<>();
     private static final ArrayList<ChunkReceiver> chunkReceivers = new ArrayList<>();
+    private static final ArrayList<PlotChangeReceiver> plotChangeReceivers = new ArrayList<>();
 
     public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
 
@@ -166,6 +167,12 @@ public class TCClient implements ClientModInitializer {
         }
     }
 
+    public static void firePlotChangeReceivers(int plotId, DFState.Mode mode) {
+        for (PlotChangeReceiver receiver : plotChangeReceivers) {
+            receiver.onPlotChanged(plotId, mode);
+        }
+    }
+
     private <T extends Manager> T setupManager(T manager) {
         if (manager instanceof ChatMessageReceiver chatMessageReceiver)
             chatMessageReceivers.add(chatMessageReceiver);
@@ -179,6 +186,8 @@ public class TCClient implements ClientModInitializer {
             tickEndReceivers.add(tickEndReceiver);
         if (manager instanceof ChunkReceiver chunkReceiver)
             chunkReceivers.add(chunkReceiver);
+        if (manager instanceof PlotChangeReceiver plotChangeReceiver)
+            plotChangeReceivers.add(plotChangeReceiver);
 
         return manager;
     }

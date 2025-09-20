@@ -359,6 +359,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
             }
             modeRefreshQueued = false;
 
+            int oldPlotId = plotId;
             if (mode == Mode.SPAWN) {
                 plotId = -1;
                 plotName = "Spawn";
@@ -370,6 +371,10 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
 
                 plotName = plotMatcher.group(1);
                 plotId = Integer.parseInt(plotMatcher.group(2));
+            }
+
+            if (oldPlotId != plotId) {
+                TCClient.firePlotChangeReceivers(plotId,mode);
             }
         }
     }
