@@ -79,9 +79,9 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
     private void removeTemplate(CachedTemplate template) {
         templatesByLocation.remove(template.plotSpacePos);
 
-        templatesByName.get(template.type).get(template.name).remove(template);
-        if (templatesByName.get(template.type).get(template.name).isEmpty())
-            templatesByName.get(template.type).remove(template.name);
+        templatesByName.get(template.id.type()).get(template.id.name()).remove(template);
+        if (templatesByName.get(template.id.type()).get(template.id.name()).isEmpty())
+            templatesByName.get(template.id.type()).remove(template.id.name());
 
         CodespaceFloor floor = getFloor(template.plotSpacePos.getY());
         CodespaceRow row = floor.getRow(template.plotSpacePos.getX());

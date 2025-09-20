@@ -4,21 +4,19 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 
 public class CachedTemplate {
-    public TemplateType type;
-    public String name;
+    public TemplateIdentifier id;
     public Vec3i plotSpacePos;
 
     public CachedTemplate(TemplateType type, String name, Vec3i plotSpacePos) {
-        this.type = type;
-        this.name = name;
+        this.id = new TemplateIdentifier(type, name);
         this.plotSpacePos = plotSpacePos;
     }
 
     @Override
     public String toString() {
         return "CachedTemplate{" +
-        "type=" + type +
-        ", name='" + name + '\'' +
+        "type=" + id.type() +
+        ", name='" + id.name() + '\'' +
         ", plotSpacePos=" + plotSpacePos +
         '}';
     }
