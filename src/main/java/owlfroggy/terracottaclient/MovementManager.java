@@ -11,6 +11,7 @@ import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
@@ -28,7 +29,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         ALIGN_Y,
     }
 
-    public static final double MOVEMENT_SPEED = 5; //50;
+    public static final double MOVEMENT_SPEED = 50; //50;
 
     private Vec3d destinationPos;
     private Vec3d assumedPlayerPos;
@@ -40,6 +41,11 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         if (TCClient.MCI.player == null) return;
         if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) currentMovementState = MovementState.NOT_MOVING;
         if (currentMovementState == MovementState.NOT_MOVING) return;
+
+        // skip avoid_code if we're already at that y level
+        if (currentMovementState == MovementState.AVOID_CODE && assumedPlayerPos.y == assumedPlayerPos.y - (assumedPlayerPos.y%5) + 2.2) {
+            currentMovementState = MovementState.ALIGN_XZ;
+        }
 
         Vec3d targetPos;
         switch (currentMovementState) {
@@ -58,6 +64,13 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         Vec3d movementVec = targetPos.subtract(assumedPlayerPos).normalize().multiply(Math.min(dist,MOVEMENT_SPEED));
         assumedPlayerPos = assumedPlayerPos.add(movementVec);
         TCClient.MCI.player.setPosition(assumedPlayerPos);
+
+        // if we're already at the position, don't bother waiting around for extra ticks
+        if (assumedPlayerPos.isInRange(destinationPos,0.01)) {
+            currentMovementState = MovementState.NOT_MOVING;
+            TCClient.MCI.player.setVelocity(0,0,0);
+            return;
+        }
 
         if (dist < MOVEMENT_SPEED) {
             currentMovementState = MovementState.values()[(currentMovementState.ordinal() + 1) % 4];
@@ -85,6 +98,15 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         assumedPlayerPos = TCClient.MCI.player.getPos();
     }
     public void setMovementDestination(Vec3d plotSpaceDestination) {
+        setMovementDestination(plotSpaceDestination, null);
+    }
+    public void setMovementDestination(Vec3i plotSpaceDestination, String movementId) {
+        setMovementDestination(
+            new Vec3d(plotSpaceDestination.getX(), plotSpaceDestination.getY(), plotSpaceDestination.getZ()),
+            movementId
+        );
+    }
+    public void setMovementDestination(Vec3i plotSpaceDestination) {
         setMovementDestination(plotSpaceDestination, null);
     }
 

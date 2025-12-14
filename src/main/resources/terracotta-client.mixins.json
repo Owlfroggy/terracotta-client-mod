@@ -1,20 +1,20 @@
 {
-	"required": true,
-	"package": "owlfroggy.terracottaclient.mixin",
-	"compatibilityLevel": "JAVA_21",
-	"mixins": [
-      "ChatMessageInterceptor",
-      "TeleportInterceptor",
-      "SetPlayerInvInterceptor",
-      "ScreenSlotUpdateInterceptor",
-      "ChunkLoadInterceptor",
-      "ChunkDeltaInterceptor",
-      "BlockEntityUpdateInterceptor"
-	],
-	"injectors": {
-		"defaultRequire": 1
-	},
-	"overwrites": {
-		"requireAnnotations": true
-	}
+  "required": true,
+  "package": "owlfroggy.terracottaclient.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BlockEntityUpdateInterceptor",
+    "ChatMessageInterceptor",
+    "ChunkDeltaInterceptor",
+    "ChunkLoadInterceptor",
+    "ScreenSlotUpdateInterceptor",
+    "SetPlayerInvInterceptor",
+    "TeleportInterceptor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
 }

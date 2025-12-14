@@ -1,36 +1,61 @@
 package owlfroggy.terracottaclient;
 
-import com.google.common.cache.Cache;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.minecraft.block.Block;
+import com.google.gson.JsonObject;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.SignBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.loot.condition.TimeCheckLootCondition;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtByte;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtInt;
+import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
-import owlfroggy.terracottaclient.codespacemanager.CachedTemplate;
-import owlfroggy.terracottaclient.codespacemanager.CodespaceFloor;
-import owlfroggy.terracottaclient.codespacemanager.CodespaceRow;
-import owlfroggy.terracottaclient.codespacemanager.TemplateType;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.*;
+import owlfroggy.terracottaclient.codespacemanager.*;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
-import owlfroggy.terracottaclient.gameinterface.ModeChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.PlotChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
 import java.util.*;
 
 public class CodespaceManager extends Manager implements ChunkReceiver, PlotChangeReceiver, TickEndReceiver {
+    private class CodeEdit {
+        public enum Action {
+            PLACE,
+            REPLACE,
+            BREAK
+        }
+
+        public Vec3i plotSpacePos;
+        public String templateData = null;
+        public Action action;
+
+        CodeEdit(Vec3i plotSpacePos, String templateData, Action action) {
+            this.plotSpacePos = plotSpacePos;
+            this.templateData = templateData;
+            this.action = action;
+        }
+    }
+
+    public enum CodeEditState {
+        MOVING,
+        PLACING,
+        BREAKING,
+        WAITING_FOR_PLACE_RESPONSE,
+        WAITING_FOR_BREAK_RESPONSE,
+    }
+
     private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
         "PLAYER EVENT", TemplateType.PLAYER_EVENT,
         "ENTITY EVENT", TemplateType.ENTITY_EVENT,
@@ -51,6 +76,11 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
     private final LinkedList<ChunkPos> queuedChunkRescans = new LinkedList<>();
 
     private ChunkPos nextChunkToScan = null;
+    private boolean isEditingCode = false;
+    private final Queue<CodeEdit> queuedCodeEdits = new LinkedList<>();
+    private CodeEdit currentCodeEdit = null;
+    private CodeEditState currentCodeEditState;
+    private ItemStack oldOffhandItem;
 
     public CodespaceFloor getFloor(int yLevel) {
         if (floors.containsKey(yLevel)) {
@@ -60,6 +90,98 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
             floors.put(yLevel, floor);
             return floor;
         }
+    }
+
+    public void editCode(String[] placeTemplates, TemplateIdentifier[] breakTemplates) throws Exception {
+        if (TCClient.DF_STATE.getPlotOrigin() == null) {
+            throw new IllegalStateException("Plot has not been scanned");
+        }
+
+        queuedCodeEdits.clear();
+        currentCodeEdit = null;
+        oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
+
+        //TODO: make it be able to take positions from templates that are being deleted
+        Queue<Vec3i> openPositions = new LinkedList<>();
+        openFinderLoop: for (int floorY = 50; floorY <= 250; floorY += 5) {
+            for (int rowX = -2; rowX >= -17; rowX -= 3) {
+                if (getFloor(floorY).getRow(rowX).templates.isEmpty()) {
+                    openPositions.add(new Vec3i(rowX,floorY,0));
+                    if (openPositions.size() >= placeTemplates.length) break openFinderLoop;
+                }
+            }
+        }
+
+        if (openPositions.size() < placeTemplates.length) {
+            throw new Exception("Not enough space is present in the codespace to place all templates");
+        }
+
+        for (TemplateIdentifier identifier : breakTemplates) {
+            CachedTemplate cachedTemplate = getTemplateByIdentifier(identifier);
+            if (cachedTemplate == null) {
+                TCClient.LOGGER.warn("Template will not be broken because it is absent from the cache: "+identifier);
+                continue;
+            }
+
+            queuedCodeEdits.add(new CodeEdit(
+                cachedTemplate.plotSpacePos,
+                null,
+                CodeEdit.Action.BREAK
+            ));
+        }
+
+        placeLoop: for (String rawTemplateData : placeTemplates) {
+            JsonObject templateData;
+            TemplateIdentifier identifier;
+
+            try {
+                templateData = TemplateDataUtils.parseTemplateData(rawTemplateData);
+                identifier = TemplateDataUtils.getIdentifier(templateData);
+            } catch (Exception e) {
+                TCClient.LOGGER.error("A template was skipped because it was invalid ("+rawTemplateData+") ",e);
+                continue placeLoop;
+            }
+
+            CachedTemplate cachedTemplate = getTemplateByIdentifier(identifier);
+
+            TCClient.LOGGER.info(identifier.toString());
+            if (cachedTemplate == null) {
+
+                Vec3i pos = openPositions.poll();
+
+                queuedCodeEdits.add(new CodeEdit(
+                    pos,
+                    rawTemplateData,
+                    CodeEdit.Action.PLACE
+                ));
+            } else {
+                queuedCodeEdits.add(new CodeEdit(
+                    cachedTemplate.plotSpacePos,
+                    rawTemplateData,
+                    CodeEdit.Action.REPLACE
+                ));
+            }
+        }
+
+        isEditingCode = true;
+    }
+
+    /**
+     * returns null if the template is not in the cache
+     * if there are multiple templates with the same identifier, returns the one at `index`
+     */
+    public CachedTemplate getTemplateByIdentifier(TemplateIdentifier id, int index) {
+        ArrayList<CachedTemplate> templates = templatesByName.get(id.type()).get(id.name());
+        if (templates == null) return null;
+
+        return templates.get(index);
+    }
+    /**
+     * returns null if the template is not in the cache
+     * if there are multiple templates with the same identifier, returns the first one in the ArrayList
+     */
+    public CachedTemplate getTemplateByIdentifier(TemplateIdentifier id) {
+        return getTemplateByIdentifier(id, 0);
     }
 
     private void addTemplate(TemplateType type, String name, Vec3i plotSpacePos) {
@@ -86,12 +208,12 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         CodespaceFloor floor = getFloor(template.plotSpacePos.getY());
         CodespaceRow row = floor.getRow(template.plotSpacePos.getX());
         row.removeTemplate(template);
-        if (row.templates.isEmpty()) {
-            floor.rows.remove(row.xPos, row);
-            if (floor.rows.isEmpty()) {
-                floors.remove(floor.yLevel, floor);
-            }
-        }
+//        if (row.templates.isEmpty()) {
+//            floor.rows.remove(row.xPos, row);
+//            if (floor.rows.isEmpty()) {
+//                floors.remove(floor.yLevel, floor);
+//            }
+//        }
     }
 
     private void clearTemplates() {
@@ -174,23 +296,103 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         }
 
         if (TCClient.DF_STATE.getMode() == DFState.Mode.DEV) {
-            if (
-                !TCClient.MOVEMENT_MANAGER.isMoving() &&
-                !queuedChunkRescans.isEmpty() &&
-                (nextChunkToScan == null || !Objects.equals(TCClient.MOVEMENT_MANAGER.getCurrentMovementId(), "SCAN_QUEUED_CHUNK"))
-            ) {
-                nextChunkToScan = queuedChunkRescans.peek();
-                TCClient.MOVEMENT_MANAGER.setMovementDestination(
-                    TCClient.DF_STATE.toPlotSpace(
-                        TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3d(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
-                    ),
-                    "SCAN_QUEUED_CHUNK"
-                );
-            }
+            codeEditLogic: if (isEditingCode) {
+                //code editing
 
-            if (nextChunkToScan != null && !queuedChunkRescans.contains(nextChunkToScan)) {
-                nextChunkToScan = null;
-                TCClient.MOVEMENT_MANAGER.cancelMovement("SCAN_QUEUED_CHUNK");
+                if (currentCodeEdit == null) {
+                    TCClient.LOGGER.info("{}",queuedCodeEdits);
+                    if (queuedCodeEdits.isEmpty()) {
+                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
+                        client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
+                        client.player.playerScreenHandler.sendContentUpdates();
+                        isEditingCode = false;
+                        break codeEditLogic;
+                    }
+                    currentCodeEdit = queuedCodeEdits.poll();
+                    currentCodeEditState = CodeEditState.MOVING;
+                }
+
+                switch (currentCodeEditState) {
+                    case CodeEditState.MOVING -> {
+                        Vec3d goalPos = Utils.toVec3d(currentCodeEdit.plotSpacePos).add(new Vec3d(-1,2.2,0));
+                        if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
+                            // if movement is complete, place
+                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
+                                if (currentCodeEdit.action == CodeEdit.Action.PLACE || currentCodeEdit.action == CodeEdit.Action.REPLACE) {
+                                    currentCodeEditState = CodeEditState.PLACING;
+                                } else {
+                                    currentCodeEditState = CodeEditState.BREAKING;
+                                }
+                            } else {
+                                TCClient.MOVEMENT_MANAGER.setMovementDestination(
+                                    goalPos,
+                                "CODE_EDIT"
+                                );
+                            }
+                        }
+                    }
+
+                    case CodeEditState.PLACING -> {
+                        // create code template item
+                        ItemStack item = new ItemStack(Items.LIGHT_BLUE_TERRACOTTA);
+                        NbtCompound root = new NbtCompound();
+
+                        NbtCompound publicBukkitValues = new NbtCompound();
+                        String templateData = String.format("""
+                        {"author":"Terracotta Client","name":"Compiled Template","version":1,"code":"%s" }
+                        """, currentCodeEdit.templateData);
+                        publicBukkitValues.putString("hypercube:codetemplatedata", templateData);
+                        root.put("PublicBukkitValues", publicBukkitValues);
+
+                        NbtCompound terracottaData = new NbtCompound();
+                        terracottaData.put("hidden", NbtByte.of(true));
+                        terracottaData.put("instance", NbtInt.of(TCClient.INSTANCE_ID));
+                        root.put("terracotta_metadata",terracottaData);
+
+                        item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(root));
+
+                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, item));
+
+                        // place item
+                        BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(currentCodeEdit.plotSpacePos));
+                        BlockHitResult hit = new BlockHitResult(
+                            blockPos.toBottomCenterPos(),
+                            Direction.DOWN,
+                            blockPos,
+                            false
+                        );
+                        TCClient.MCI.interactionManager.interactBlock(client.player,Hand.OFF_HAND, hit);
+
+                        currentCodeEdit = null;
+                        currentCodeEditState = CodeEditState.MOVING;
+                    }
+
+                    case CodeEditState.WAITING_FOR_PLACE_RESPONSE -> {
+                        currentCodeEdit = null;
+                    }
+                }
+
+            }
+            else {
+                // chunk scanning
+                if (
+                    !TCClient.MOVEMENT_MANAGER.isMoving() &&
+                    !queuedChunkRescans.isEmpty() &&
+                    (nextChunkToScan == null || !Objects.equals(TCClient.MOVEMENT_MANAGER.getCurrentMovementId(), "SCAN_QUEUED_CHUNK"))
+                ) {
+                    nextChunkToScan = queuedChunkRescans.peek();
+                    TCClient.MOVEMENT_MANAGER.setMovementDestination(
+                        TCClient.DF_STATE.toPlotSpace(
+                            TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3d(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
+                        ),
+                        "SCAN_QUEUED_CHUNK"
+                    );
+                }
+
+                if (nextChunkToScan != null && !queuedChunkRescans.contains(nextChunkToScan)) {
+                    nextChunkToScan = null;
+                    TCClient.MOVEMENT_MANAGER.cancelMovement("SCAN_QUEUED_CHUNK");
+                }
             }
         }
     }
