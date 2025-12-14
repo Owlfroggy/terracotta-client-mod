@@ -86,6 +86,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
     private CodeEdit currentCodeEdit = null;
     private CodeEditState currentCodeEditState;
     private ItemStack oldOffhandItem;
+    private ItemStack oldFirstSlotItem;
 
     public CodespaceFloor getFloor(int yLevel) {
         if (floors.containsKey(yLevel)) {
@@ -105,6 +106,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         queuedCodeEdits.clear();
         currentCodeEdit = null;
         oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
+        oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(9);
 
         //TODO: make it be able to take positions from templates that are being deleted
         Queue<Vec3i> openPositions = new LinkedList<>();
@@ -309,6 +311,10 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                     if (queuedCodeEdits.isEmpty()) {
                         client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
                         client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
+
+                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, oldFirstSlotItem));
+                        client.player.getInventory().setStack(9,oldFirstSlotItem);
+
                         client.player.playerScreenHandler.sendContentUpdates();
                         isEditingCode = false;
                         break codeEditLogic;
@@ -323,7 +329,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                         if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
                             // if movement is complete, place
                             if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
-                                if (currentCodeEdit.action == CodeEdit.Action.PLACE || currentCodeEdit.action == CodeEdit.Action.REPLACE) {
+                                if (currentCodeEdit.action == CodeEdit.Action.PLACE) {
                                     currentCodeEditState = CodeEditState.PLACING;
                                 } else {
                                     currentCodeEditState = CodeEditState.BREAKING;
@@ -340,6 +346,10 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                     case CodeEditState.BREAKING -> {
                         GameOptions settings = TCClient.MCI.options;
 
+                        // clear a slot for the new template to go into
+                        // (so a billion dropped items dont spawn)
+                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, new ItemStack(Items.AIR)));
+
                         // sneak
                         PlayerInput sneakInput = new PlayerInput(
                             settings.forwardKey.isPressed(),
@@ -354,7 +364,6 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
                         // break
                         BlockPos pos = new BlockPos(TCClient.DF_STATE.toWorldSpace(currentCodeEdit.plotSpacePos));
-
                         ((SequencedPacketAccessor)client.interactionManager).invokeSendSequencedPacket(TCClient.MCI.world, sequence -> {
                             TCClient.MCI.interactionManager.breakBlock(pos);
                             return new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
@@ -372,8 +381,12 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                         );
                         client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(unsneakInput));
 
-                        currentCodeEdit = null;
-                        currentCodeEditState = CodeEditState.MOVING;
+                        if (currentCodeEdit.action == CodeEdit.Action.BREAK) {
+                            currentCodeEdit = null;
+                            currentCodeEditState = CodeEditState.MOVING;
+                        } else {
+                            currentCodeEditState = CodeEditState.PLACING;
+                        }
                     }
 
                     case CodeEditState.PLACING -> {
