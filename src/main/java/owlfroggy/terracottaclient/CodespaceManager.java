@@ -5,6 +5,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.GameOptions;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerInventory;
@@ -14,18 +15,22 @@ import net.minecraft.nbt.NbtByte;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtInt;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.PlayerInput;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import owlfroggy.terracottaclient.codespacemanager.*;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
 import owlfroggy.terracottaclient.gameinterface.PlotChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
+import owlfroggy.terracottaclient.mixin.SequencedPacketAccessor;
 
 import java.util.*;
 
@@ -330,6 +335,45 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                                 );
                             }
                         }
+                    }
+
+                    case CodeEditState.BREAKING -> {
+                        GameOptions settings = TCClient.MCI.options;
+
+                        // sneak
+                        PlayerInput sneakInput = new PlayerInput(
+                            settings.forwardKey.isPressed(),
+                            settings.backKey.isPressed(),
+                            settings.leftKey.isPressed(),
+                            settings.rightKey.isPressed(),
+                            settings.jumpKey.isPressed(),
+                            true,
+                            settings.sprintKey.isPressed()
+                        );
+                        client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(sneakInput));
+
+                        // break
+                        BlockPos pos = new BlockPos(TCClient.DF_STATE.toWorldSpace(currentCodeEdit.plotSpacePos));
+
+                        ((SequencedPacketAccessor)client.interactionManager).invokeSendSequencedPacket(TCClient.MCI.world, sequence -> {
+                            TCClient.MCI.interactionManager.breakBlock(pos);
+                            return new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
+                        });
+
+                        // unsneak
+                        PlayerInput unsneakInput = new PlayerInput(
+                            settings.forwardKey.isPressed(),
+                            settings.backKey.isPressed(),
+                            settings.leftKey.isPressed(),
+                            settings.rightKey.isPressed(),
+                            settings.jumpKey.isPressed(),
+                            settings.sneakKey.isPressed(),
+                            settings.sprintKey.isPressed()
+                        );
+                        client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(unsneakInput));
+
+                        currentCodeEdit = null;
+                        currentCodeEditState = CodeEditState.MOVING;
                     }
 
                     case CodeEditState.PLACING -> {

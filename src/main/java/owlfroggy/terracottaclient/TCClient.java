@@ -87,10 +87,14 @@ public class TCClient implements ClientModInitializer {
 //                    TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(TEST_TEMPLATE_DATA)).toString()
 //                ));
                 try {
-                    TCClient.CODESPACE_MANAGER.editCode(new String[]{
-                        TEST_TEMPLATE_DATA,
-                        TEST_TEMPLATE_DATA_2
-                    },new TemplateIdentifier[]{});
+//                    TCClient.CODESPACE_MANAGER.editCode(new String[]{
+//                        TEST_TEMPLATE_DATA,
+//                        TEST_TEMPLATE_DATA_2
+//                    },new TemplateIdentifier[]{});
+                    TCClient.CODESPACE_MANAGER.editCode(new String[]{},new TemplateIdentifier[]{
+                        new TemplateIdentifier(TemplateType.FUNCTION,"omg"),
+                        new TemplateIdentifier(TemplateType.FUNCTION,"globalPlrDeath"),
+                    });
                 } catch (Exception e) {
                     context.getSource().sendFeedback(Text.empty().formatted(Formatting.RED).append("ERROR: "+e.getMessage()));
                 }
