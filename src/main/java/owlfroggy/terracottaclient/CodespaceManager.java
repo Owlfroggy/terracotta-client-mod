@@ -7,8 +7,10 @@ import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtByte;
@@ -42,23 +44,30 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
             BREAK
         }
 
+        public enum State {
+            PLACING,
+            WAITING_FOR_PLACE_VERIFICATION,
+            BREAKING,
+            WAITING_FOR_BREAK_VERIFICATION,
+            DONE,
+        }
+
         public Vec3i plotSpacePos;
         public String templateData = null;
         public Action action;
+        public State state;
 
-        CodeEdit(Vec3i plotSpacePos, String templateData, Action action) {
+        CodeEdit(Vec3i plotSpacePos, String templateData, Action action, State state) {
             this.plotSpacePos = plotSpacePos;
             this.templateData = templateData;
             this.action = action;
+            this.state = state;
         }
     }
-
-    public enum CodeEditState {
+    private enum GlobalEditState {
         MOVING,
-        PLACING,
-        BREAKING,
-        WAITING_FOR_PLACE_RESPONSE,
-        WAITING_FOR_BREAK_RESPONSE,
+        EDITING,
+        IDLE,
     }
 
     private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
@@ -67,6 +76,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         "FUNCTION", TemplateType.FUNCTION,
         "PROCESS", TemplateType.PROCESS
     ));
+    private final ItemStack REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
 
     public final HashMap<Vec3i, CachedTemplate> templatesByLocation = new HashMap<>();
     public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
@@ -81,10 +91,10 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
     private final LinkedList<ChunkPos> queuedChunkRescans = new LinkedList<>();
 
     private ChunkPos nextChunkToScan = null;
-    private boolean isEditingCode = false;
-    private final Queue<CodeEdit> queuedCodeEdits = new LinkedList<>();
-    private CodeEdit currentCodeEdit = null;
-    private CodeEditState currentCodeEditState;
+    private GlobalEditState editState = GlobalEditState.IDLE;
+    private final ArrayList<CodeEdit> queuedCodeEdits = new ArrayList<>();
+    private final ArrayList<CodeEdit> stagedCodeEdits = new ArrayList<>();
+    private int stagedEditActiveIndex = 0;
     private ItemStack oldOffhandItem;
     private ItemStack oldFirstSlotItem;
 
@@ -104,7 +114,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         }
 
         queuedCodeEdits.clear();
-        currentCodeEdit = null;
+        stagedCodeEdits.clear();
         oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(9);
 
@@ -133,7 +143,8 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
             queuedCodeEdits.add(new CodeEdit(
                 cachedTemplate.plotSpacePos,
                 null,
-                CodeEdit.Action.BREAK
+                CodeEdit.Action.BREAK,
+                CodeEdit.State.BREAKING
             ));
         }
 
@@ -151,7 +162,6 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
             CachedTemplate cachedTemplate = getTemplateByIdentifier(identifier);
 
-            TCClient.LOGGER.info(identifier.toString());
             if (cachedTemplate == null) {
 
                 Vec3i pos = openPositions.poll();
@@ -159,18 +169,20 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                 queuedCodeEdits.add(new CodeEdit(
                     pos,
                     rawTemplateData,
-                    CodeEdit.Action.PLACE
+                    CodeEdit.Action.PLACE,
+                    CodeEdit.State.PLACING
                 ));
             } else {
                 queuedCodeEdits.add(new CodeEdit(
                     cachedTemplate.plotSpacePos,
                     rawTemplateData,
-                    CodeEdit.Action.REPLACE
+                    CodeEdit.Action.REPLACE,
+                    CodeEdit.State.BREAKING
                 ));
             }
         }
 
-        isEditingCode = true;
+        editState = GlobalEditState.MOVING;
     }
 
     /**
@@ -303,37 +315,47 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         }
 
         if (TCClient.DF_STATE.getMode() == DFState.Mode.DEV) {
-            codeEditLogic: if (isEditingCode) {
+            codeEditLogic: if (editState != GlobalEditState.IDLE) {
                 //code editing
+                if (queuedCodeEdits.isEmpty() && stagedCodeEdits.isEmpty()) {
+                    client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
+                    client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
 
-                if (currentCodeEdit == null) {
-                    TCClient.LOGGER.info("{}",queuedCodeEdits);
-                    if (queuedCodeEdits.isEmpty()) {
-                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
-                        client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
+                    client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, oldFirstSlotItem));
+                    client.player.getInventory().setStack(9,oldFirstSlotItem);
 
-                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, oldFirstSlotItem));
-                        client.player.getInventory().setStack(9,oldFirstSlotItem);
-
-                        client.player.playerScreenHandler.sendContentUpdates();
-                        isEditingCode = false;
-                        break codeEditLogic;
-                    }
-                    currentCodeEdit = queuedCodeEdits.poll();
-                    currentCodeEditState = CodeEditState.MOVING;
+                    client.player.playerScreenHandler.sendContentUpdates();
+                    editState = GlobalEditState.IDLE;
+                    break codeEditLogic;
                 }
 
-                switch (currentCodeEditState) {
-                    case CodeEditState.MOVING -> {
-                        Vec3d goalPos = Utils.toVec3d(currentCodeEdit.plotSpacePos).add(new Vec3d(-1,2.2,0));
-                        if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
-                            // if movement is complete, place
-                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
-                                if (currentCodeEdit.action == CodeEdit.Action.PLACE) {
-                                    currentCodeEditState = CodeEditState.PLACING;
-                                } else {
-                                    currentCodeEditState = CodeEditState.BREAKING;
+                switch (editState) {
+                    case MOVING -> {
+                        // stage new edits
+                        if (stagedCodeEdits.isEmpty()) {
+                            CodeEdit coreEdit = queuedCodeEdits.removeLast();
+                            stagedCodeEdits.add(coreEdit);
+                            // TODO: make this position you on top of the chest instead of beside it
+
+                            // stage all edits which are within placing range of this edit
+                            for (int i = queuedCodeEdits.size()-1; i >= 0; i--) {
+                                CodeEdit edit = queuedCodeEdits.get(i);
+                                if (edit.plotSpacePos.isWithinDistance(coreEdit.plotSpacePos,60.0)) {
+                                    queuedCodeEdits.remove(i);
+                                    stagedCodeEdits.add(edit);
                                 }
+                            }
+
+                            stagedEditActiveIndex = stagedCodeEdits.size()-1;
+                        }
+
+                        // move to the right place
+                        if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
+                            Vec3d goalPos = Utils.toVec3d(stagedCodeEdits.getFirst().plotSpacePos).add(new Vec3d(-1,2.2,0));
+
+                            // if movement is complete, switch to editing mode
+                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
+                                editState = GlobalEditState.EDITING;
                             } else {
                                 TCClient.MOVEMENT_MANAGER.setMovementDestination(
                                     goalPos,
@@ -343,89 +365,113 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                         }
                     }
 
-                    case CodeEditState.BREAKING -> {
-                        GameOptions settings = TCClient.MCI.options;
+                    case EDITING -> {
+                        CodeEdit activeEdit = stagedCodeEdits.get(stagedEditActiveIndex);
+                        int checkedEdits = 1;
+                        int maxChecks = stagedCodeEdits.size();
+                        // loop through edits until an actionable one has been found
+                        while (
+                            !(activeEdit.state == CodeEdit.State.PLACING || activeEdit.state == CodeEdit.State.BREAKING)
+                        ) {
+                            // if the previous edit is done, remove it from the list
+                            //TODO: fix this condition
+                            if (true || activeEdit.state == CodeEdit.State.DONE) {
+                                stagedCodeEdits.remove(stagedEditActiveIndex);
+                                if (stagedCodeEdits.isEmpty()) {
+                                    editState = GlobalEditState.MOVING;
+                                    break codeEditLogic;
+                                }
+                            }
+                            // don't loop endlessly if there are no actionable edits
+                            if (checkedEdits > maxChecks) {
+                                break codeEditLogic; // basically just waits this tick out
+                            }
 
-                        // clear a slot for the new template to go into
-                        // (so a billion dropped items dont spawn)
-                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, new ItemStack(Items.AIR)));
-
-                        // sneak
-                        PlayerInput sneakInput = new PlayerInput(
-                            settings.forwardKey.isPressed(),
-                            settings.backKey.isPressed(),
-                            settings.leftKey.isPressed(),
-                            settings.rightKey.isPressed(),
-                            settings.jumpKey.isPressed(),
-                            true,
-                            settings.sprintKey.isPressed()
-                        );
-                        client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(sneakInput));
-
-                        // break
-                        BlockPos pos = new BlockPos(TCClient.DF_STATE.toWorldSpace(currentCodeEdit.plotSpacePos));
-                        ((SequencedPacketAccessor)client.interactionManager).invokeSendSequencedPacket(TCClient.MCI.world, sequence -> {
-                            TCClient.MCI.interactionManager.breakBlock(pos);
-                            return new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
-                        });
-
-                        // unsneak
-                        PlayerInput unsneakInput = new PlayerInput(
-                            settings.forwardKey.isPressed(),
-                            settings.backKey.isPressed(),
-                            settings.leftKey.isPressed(),
-                            settings.rightKey.isPressed(),
-                            settings.jumpKey.isPressed(),
-                            settings.sneakKey.isPressed(),
-                            settings.sprintKey.isPressed()
-                        );
-                        client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(unsneakInput));
-
-                        if (currentCodeEdit.action == CodeEdit.Action.BREAK) {
-                            currentCodeEdit = null;
-                            currentCodeEditState = CodeEditState.MOVING;
-                        } else {
-                            currentCodeEditState = CodeEditState.PLACING;
+                            checkedEdits++;
+                            stagedEditActiveIndex--;
+                            if (stagedEditActiveIndex < 0) stagedEditActiveIndex = queuedCodeEdits.size()-1;
+                            activeEdit = stagedCodeEdits.get(stagedEditActiveIndex);
                         }
-                    }
 
-                    case CodeEditState.PLACING -> {
-                        // create code template item
-                        ItemStack item = new ItemStack(Items.LIGHT_BLUE_TERRACOTTA);
-                        NbtCompound root = new NbtCompound();
+                        switch (activeEdit.state) {
+                            case BREAKING -> {
+                                GameOptions settings = TCClient.MCI.options;
 
-                        NbtCompound publicBukkitValues = new NbtCompound();
-                        String templateData = String.format("""
-                        {"author":"Terracotta Client","name":"Compiled Template","version":1,"code":"%s" }
-                        """, currentCodeEdit.templateData);
-                        publicBukkitValues.putString("hypercube:codetemplatedata", templateData);
-                        root.put("PublicBukkitValues", publicBukkitValues);
+                                // clear a slot for the new template to go into
+                                // (so a billion dropped items dont spawn)
+                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, new ItemStack(Items.AIR)));
 
-                        NbtCompound terracottaData = new NbtCompound();
-                        terracottaData.put("hidden", NbtByte.of(true));
-                        terracottaData.put("instance", NbtInt.of(TCClient.INSTANCE_ID));
-                        root.put("terracotta_metadata",terracottaData);
+                                // make sure reach is extended
+                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, REACH_EXTENDER));
 
-                        item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(root));
+                                // sneak
+                                PlayerInput sneakInput = new PlayerInput(
+                                settings.forwardKey.isPressed(),
+                                settings.backKey.isPressed(),
+                                settings.leftKey.isPressed(),
+                                settings.rightKey.isPressed(),
+                                settings.jumpKey.isPressed(),
+                                true,
+                                settings.sprintKey.isPressed()
+                                );
+                                client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(sneakInput));
 
-                        client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, item));
+                                // break
+                                BlockPos pos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
+                                ((SequencedPacketAccessor)client.interactionManager).invokeSendSequencedPacket(TCClient.MCI.world, sequence -> {
+                                    TCClient.MCI.interactionManager.breakBlock(pos);
+                                    return new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
+                                });
 
-                        // place item
-                        BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(currentCodeEdit.plotSpacePos));
-                        BlockHitResult hit = new BlockHitResult(
-                            blockPos.toBottomCenterPos(),
-                            Direction.DOWN,
-                            blockPos,
-                            false
-                        );
-                        TCClient.MCI.interactionManager.interactBlock(client.player,Hand.OFF_HAND, hit);
+                                // unsneak
+                                PlayerInput unsneakInput = new PlayerInput(
+                                settings.forwardKey.isPressed(),
+                                settings.backKey.isPressed(),
+                                settings.leftKey.isPressed(),
+                                settings.rightKey.isPressed(),
+                                settings.jumpKey.isPressed(),
+                                settings.sneakKey.isPressed(),
+                                settings.sprintKey.isPressed()
+                                );
+                                client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(unsneakInput));
 
-                        currentCodeEdit = null;
-                        currentCodeEditState = CodeEditState.MOVING;
-                    }
+                                activeEdit.state = CodeEdit.State.WAITING_FOR_BREAK_VERIFICATION;
+                            }
+                            case PLACING -> {
+                                // create code template item
+                                ItemStack item = new ItemStack(Items.LIGHT_BLUE_TERRACOTTA);
+                                NbtCompound root = new NbtCompound();
 
-                    case CodeEditState.WAITING_FOR_PLACE_RESPONSE -> {
-                        currentCodeEdit = null;
+                                NbtCompound publicBukkitValues = new NbtCompound();
+                                String templateData = String.format("""
+                                {"author":"Terracotta Client","name":"Compiled Template","version":1,"code":"%s" }
+                                """, activeEdit.templateData);
+                                publicBukkitValues.putString("hypercube:codetemplatedata", templateData);
+                                root.put("PublicBukkitValues", publicBukkitValues);
+
+                                NbtCompound terracottaData = new NbtCompound();
+                                terracottaData.put("hidden", NbtByte.of(true));
+                                terracottaData.put("instance", NbtInt.of(TCClient.INSTANCE_ID));
+                                root.put("terracotta_metadata",terracottaData);
+
+                                item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(root));
+                                Utils.applyReachToItem(item,"editor_reach_thingy");
+
+                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, item));
+
+                                // place item
+                                BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
+                                    BlockHitResult hit = new BlockHitResult(
+                                    blockPos.toBottomCenterPos(),
+                                    Direction.DOWN,
+                                    blockPos,
+                                    false
+                                );
+                                TCClient.MCI.interactionManager.interactBlock(client.player,Hand.OFF_HAND, hit);
+
+                                activeEdit.state = CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION;
+                            }
+                        }
                     }
                 }
 

@@ -9,9 +9,23 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.component.ComponentType;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtByte;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtInt;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ChunkPos;
@@ -25,9 +39,11 @@ import owlfroggy.terracottaclient.codespacemanager.TemplateDataUtils;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
+import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TCClient implements ClientModInitializer {
@@ -68,6 +84,8 @@ public class TCClient implements ClientModInitializer {
         // Proceed with mild caution.
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
+
+//                MCI.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(1, item));
                 context.getSource().sendFeedback(Text.literal("you edid ait!"));
                 MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
                 return 1;
