@@ -121,6 +121,23 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager.literal("testbreak").executes(context -> {
+//                context.getSource().sendFeedback(Text.literal(
+//                    TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(TEST_TEMPLATE_DATA)).toString()
+//                ));
+                try
+                { TCClient.CODESPACE_MANAGER.editCode(new String[]{},new TemplateIdentifier[]{
+                        new TemplateIdentifier(TemplateType.FUNCTION,"omg"),
+                        new TemplateIdentifier(TemplateType.FUNCTION,"globalPlrDeath"),
+                    });
+                } catch (Exception e) {
+                    context.getSource().sendFeedback(Text.empty().formatted(Formatting.RED).append("ERROR: "+e.getMessage()));
+                }
+                return 1;
+            }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("dumptemplatecache").executes(context -> {
                 context.getSource().sendFeedback(Text.literal("BY LOCATION -----------"));
                 context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.templatesByLocation.toString()));

@@ -1,16 +1,16 @@
 package owlfroggy.terracottaclient;
 
 import com.google.gson.JsonObject;
+import net.minecraft.block.AirBlock;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtByte;
@@ -94,6 +94,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
     private GlobalEditState editState = GlobalEditState.IDLE;
     private final ArrayList<CodeEdit> queuedCodeEdits = new ArrayList<>();
     private final ArrayList<CodeEdit> stagedCodeEdits = new ArrayList<>();
+    private final HashMap<Vec3i, CodeEdit> codeEditsByPlotPos = new HashMap<>();
     private int stagedEditActiveIndex = 0;
     private ItemStack oldOffhandItem;
     private ItemStack oldFirstSlotItem;
@@ -115,11 +116,12 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
         queuedCodeEdits.clear();
         stagedCodeEdits.clear();
+        codeEditsByPlotPos.clear();
         oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(9);
 
         //TODO: make it be able to take positions from templates that are being deleted
-        Queue<Vec3i> openPositions = new LinkedList<>();
+        Queue<Vec3i> openPositions = new LinkedList<>(); //plot space
         openFinderLoop: for (int floorY = 50; floorY <= 250; floorY += 5) {
             for (int rowX = -2; rowX >= -17; rowX -= 3) {
                 if (getFloor(floorY).getRow(rowX).templates.isEmpty()) {
@@ -140,12 +142,14 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                 continue;
             }
 
-            queuedCodeEdits.add(new CodeEdit(
+            CodeEdit edit = new CodeEdit(
                 cachedTemplate.plotSpacePos,
                 null,
                 CodeEdit.Action.BREAK,
                 CodeEdit.State.BREAKING
-            ));
+            );
+            queuedCodeEdits.add(edit);
+            codeEditsByPlotPos.put(cachedTemplate.plotSpacePos, edit);
         }
 
         placeLoop: for (String rawTemplateData : placeTemplates) {
@@ -163,22 +167,24 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
             CachedTemplate cachedTemplate = getTemplateByIdentifier(identifier);
 
             if (cachedTemplate == null) {
-
                 Vec3i pos = openPositions.poll();
-
-                queuedCodeEdits.add(new CodeEdit(
+                CodeEdit edit = new CodeEdit(
                     pos,
                     rawTemplateData,
                     CodeEdit.Action.PLACE,
                     CodeEdit.State.PLACING
-                ));
+                );
+                queuedCodeEdits.add(edit);
+                codeEditsByPlotPos.put(pos, edit);
             } else {
-                queuedCodeEdits.add(new CodeEdit(
+                CodeEdit edit = new CodeEdit(
                     cachedTemplate.plotSpacePos,
                     rawTemplateData,
                     CodeEdit.Action.REPLACE,
                     CodeEdit.State.BREAKING
-                ));
+                );
+                queuedCodeEdits.add(edit);
+                codeEditsByPlotPos.put(cachedTemplate.plotSpacePos, edit);
             }
         }
 
@@ -387,8 +393,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                             !(activeEdit.state == CodeEdit.State.PLACING || activeEdit.state == CodeEdit.State.BREAKING)
                         ) {
                             // if the previous edit is done, remove it from the list
-                            //TODO: fix this condition
-                            if (true || activeEdit.state == CodeEdit.State.DONE) {
+                            if (activeEdit.state == CodeEdit.State.DONE) {
                                 stagedCodeEdits.remove(stagedEditActiveIndex);
                                 if (stagedCodeEdits.isEmpty()) {
                                     editState = GlobalEditState.MOVING;
@@ -402,7 +407,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
                             checkedEdits++;
                             stagedEditActiveIndex--;
-                            if (stagedEditActiveIndex < 0) stagedEditActiveIndex = queuedCodeEdits.size()-1;
+                            if (stagedEditActiveIndex < 0) stagedEditActiveIndex = stagedCodeEdits.size()-1;
                             activeEdit = stagedCodeEdits.get(stagedEditActiveIndex);
                         }
 
@@ -529,7 +534,40 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         packet.visitUpdates((blockPos, blockState) -> {
             Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
             if (plotOrigin == null) return;
-            queuedBlockRescans.add(blockPos.toImmutable());
+
+            // rescanning
+            BlockPos immutablePos = blockPos.toImmutable();
+            queuedBlockRescans.add(immutablePos);
+
+            // validating code edit operations
+            Vec3i plotSpacePos = TCClient.DF_STATE.toPlotSpace(immutablePos);
+            CodeEdit edit = codeEditsByPlotPos.getOrDefault(plotSpacePos, null);
+            if (edit != null) {
+                switch (edit.state) {
+                    case WAITING_FOR_BREAK_VERIFICATION -> {
+                        // block was successfully broken
+                        if (blockState.getBlock() == Blocks.AIR) {
+                            if (edit.action == CodeEdit.Action.REPLACE) {
+                                edit.state = CodeEdit.State.PLACING;
+                            } else {
+                                edit.state = CodeEdit.State.DONE;
+                            }
+                        }
+                        // server sent back original block
+                        else {
+                            edit.state = CodeEdit.State.BREAKING;
+                        }
+                    }
+                    case WAITING_FOR_PLACE_VERIFICATION -> {
+                        // block was not successfully placed
+                        if (blockState.getBlock() == Blocks.AIR) {
+                            edit.state = CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION;
+                        } else {
+                            edit.state = CodeEdit.State.DONE;
+                        }
+                    }
+                }
+            }
         });
     }
 
