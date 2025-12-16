@@ -333,7 +333,20 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                     case MOVING -> {
                         // stage new edits
                         if (stagedCodeEdits.isEmpty()) {
-                            CodeEdit coreEdit = queuedCodeEdits.removeLast();
+                            // find the closest edit to the player and make that the core edit
+                            Vec3d playerPos = TCClient.MCI.player.getPos();
+                            CodeEdit coreEdit = null;
+                            double minDistance = 999999999.0; //refactor this when world plots come out fr fr
+                            for (CodeEdit edit : queuedCodeEdits) {
+                                double distance = TCClient.DF_STATE.toWorldSpace(Utils.toVec3d(edit.plotSpacePos)).distanceTo(playerPos);
+                                if (distance < minDistance) {
+                                    minDistance = distance;
+                                    coreEdit = edit;
+                                }
+                            }
+
+                            assert coreEdit != null;
+
                             stagedCodeEdits.add(coreEdit);
                             // TODO: make this position you on top of the chest instead of beside it
 
