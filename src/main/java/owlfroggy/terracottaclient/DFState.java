@@ -106,6 +106,9 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
     private PlotType plotType = PlotType.UNKNOWN;
     public PlotType getPlotType() {return plotType;};
 
+    private int totalCodespaceChunks = -1;
+    public int getTotalCodespaceChunks() {return totalCodespaceChunks;}
+
     private CompletableFuture<Optional<Vec3d>> ptpFuture;
     private AtomicReference<Vec3d> plotScanTargetPos = new AtomicReference<Vec3d>(null);
 
@@ -239,9 +242,11 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                 int plusCornerChunkZ = (int)(plusCorner.z/16);
 
                 // queue every chunk in the codespace for a rescan
+                totalCodespaceChunks = 0;
                 for (int cx = minusCornerChunkX; cx <= plusCornerChunkX; cx++){
                     for (int cz = minusCornerChunkZ; cz <= plusCornerChunkZ; cz++) {
                         TCClient.CODESPACE_MANAGER.queueChunkForScan(new ChunkPos(cx,cz));
+                        totalCodespaceChunks++;
                     }
                 }
 

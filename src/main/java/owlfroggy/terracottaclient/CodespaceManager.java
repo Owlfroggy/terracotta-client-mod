@@ -331,7 +331,15 @@ implements
         Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
         if (plotOrigin == null) return;
 
-        queuedChunkRescans.remove(chunkPos);
+        if (queuedChunkRescans.contains(chunkPos)) {
+            queuedChunkRescans.remove(chunkPos);
+            // scanning progres report
+            TCClient.MCI.player.sendMessage(
+                Text.of(
+                "Scanning codespace: " + (int)(100-(double)queuedChunkRescans.size()/TCClient.DF_STATE.getTotalCodespaceChunks()*100) + "%"
+                ), true
+            );
+        }
 
         //dont scan chunk if it doesnt touch the codespace
         if (!(
@@ -467,6 +475,7 @@ implements
                                     activeEdit.inactivityCycles += 1;
                                 }
                                 int maxInactivityCycles = 10 + client.getNetworkHandler().getPlayerListEntry(client.player.getUuid()).getLatency()*50/1000;
+                                CodeEdit.State oldState = activeEdit.state;
                                 if (activeEdit.inactivityCycles > maxInactivityCycles) {
                                     if (client.world.getBlockState(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
                                         activeEdit.state = switch (activeEdit.action) {
@@ -480,7 +489,7 @@ implements
                                         };
                                     }
 
-                                    TCClient.LOGGER.warn("Code edit at {} got stuck! Retrying with state: {}", activeEdit.plotSpacePos, activeEdit.state.name());
+                                    TCClient.LOGGER.warn("Code edit (action {}) at {} got stuck in {}! Retrying with state: {}", activeEdit.action.name(), activeEdit.plotSpacePos, oldState.name(), activeEdit.state.name());
                                 }
                             }
 
