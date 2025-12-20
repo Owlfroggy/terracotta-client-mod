@@ -134,7 +134,8 @@ implements
 
         //TODO: make it be able to take positions from templates that are being deleted
         Queue<Vec3i> openPositions = new LinkedList<>(); //plot space
-        openFinderLoop: for (int floorY = 50; floorY <= 250; floorY += 5) {
+        int bottomFloor = TCClient.DF_STATE.hasUndergroundCodespace() ? 5 : 50;
+        openFinderLoop: for (int floorY = bottomFloor; floorY <= 250; floorY += 5) {
             for (int rowX = -2; rowX >= -17; rowX -= 3) {
                 if (getFloor(floorY).getRow(rowX).templates.isEmpty()) {
                     openPositions.add(new Vec3i(rowX,floorY,0));
@@ -302,6 +303,8 @@ implements
      * @param blockPos in WORLD SPACE!!
      */
     public void processBlockTemplate(BlockPos blockPos) {
+        if (TCClient.MCI.world == null) return;
+
         //remove old template at this block
         Vec3i templatePos = TCClient.DF_STATE.toPlotSpace(blockPos).add(1,0,0);
         if (templatesByLocation.containsKey(templatePos))
@@ -414,7 +417,6 @@ implements
                             assert coreEdit != null;
                             currentBatchCoreEdit = coreEdit;
                             stagedCodeEdits.add(coreEdit);
-                            // TODO: make this position you on top of the chest instead of beside it
 
                             // stage all edits which are within placing range of this edit
                             for (int i = queuedCodeEdits.size()-1; i >= 0; i--) {
@@ -430,7 +432,7 @@ implements
 
                         // move to the right place
                         if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
-                            Vec3d goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3d(-1,2.2,0));
+                            Vec3d goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3d(0.5,2.2,0.5));
 
                             // if movement is complete, switch to editing mode
                             if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
