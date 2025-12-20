@@ -66,6 +66,15 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
         .append(Text.literal("Error: ").formatted(Formatting.RED))
         .append(Text.literal("That location is out of bounds!").formatted(Formatting.GRAY))
     );
+    private static final Text FUNC_RENAME_HINT_TEXT = (
+        Text.empty()
+        .append(Text.literal("Right click the sign while holding a ").formatted(Formatting.YELLOW))
+        .append(Text.literal("String").formatted(Formatting.AQUA))
+        .append(Text.literal(" to name the Function.\n").formatted(Formatting.YELLOW))
+        .append(Text.literal("You can also use String on ").formatted(Formatting.YELLOW))
+        .append(Text.literal("Call Function").withColor(0xFF55AA))
+        .append(Text.literal(" blocks!").formatted(Formatting.YELLOW))
+    );
     private static final Text PREFERENCES_ITEM_NAME = (
         Text.empty().setStyle(Style.EMPTY.withItalic(false))
         .append(Text.literal("◇ ").withColor(0x7F7F2A))
@@ -297,6 +306,10 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
 
     public boolean isMessageOutOfBoundsError(Text message) {
         return message.equals(OUT_OF_BOUNDS_TEXT);
+    }
+
+    public boolean isMessageFuncRenameHint(Text message) {
+        return message.equals(FUNC_RENAME_HINT_TEXT);
     }
 
     public void onTeleported(Vec3d newPos, Vec3d oldPos) {

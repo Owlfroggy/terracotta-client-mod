@@ -17,6 +17,7 @@ public class ChatMessageInterceptor {
         if (!packet.overlay()) {
             boolean shouldSuppressLocate = TCClient.DF_STATE.modeRefreshQueued;
             boolean shouldSupprsesOOB = TCClient.DF_STATE.plotScanActive;
+            boolean isEditingCode = TCClient.CODESPACE_MANAGER.isEditingCode();
 
             TCClient.fireChatMessageReceivers(packet.content());
 
@@ -24,6 +25,9 @@ public class ChatMessageInterceptor {
                 info.cancel();
             if (shouldSupprsesOOB && TCClient.DF_STATE.isMessageOutOfBoundsError(packet.content()))
                 info.cancel();
+            if (isEditingCode && TCClient.DF_STATE.isMessageFuncRenameHint(packet.content()))
+                info.cancel();
+//            TCClient.LOGGER.info(packet.content().toString());
         }
 	}
 }

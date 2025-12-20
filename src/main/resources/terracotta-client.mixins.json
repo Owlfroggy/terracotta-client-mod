@@ -19,6 +19,7 @@
   },
   "client": [
     "ClientBlockUpdateInterceptor",
+    "ScreenOpenInterceptor",
     "SequencedPacketAccessor"
   ]
 }

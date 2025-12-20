@@ -368,6 +368,10 @@ implements
         queuedChunkRescans.add(chunkPos);
     }
 
+    public boolean isEditingCode() {
+        return editState != GlobalEditState.IDLE;
+    }
+
     @Override
     public void onTickEnd(MinecraftClient client) {
         while (!queuedBlockRescans.isEmpty()) {
