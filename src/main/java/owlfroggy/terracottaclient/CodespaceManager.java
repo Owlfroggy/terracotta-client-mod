@@ -64,6 +64,7 @@ implements
         public Action action;
         public State state;
         public int inactivityCycles = 0;
+        public boolean breakWasDefinitelySuccessful = false;
 
         CodeEdit(Vec3i plotSpacePos, String templateData, Action action, State state) {
             this.plotSpacePos = plotSpacePos;
@@ -270,6 +271,7 @@ implements
                 case WAITING_FOR_BREAK_VERIFICATION -> {
                     // block was successfully broken
                     if (blockState.getBlock() == Blocks.AIR && !cameFromClient) {
+                        edit.breakWasDefinitelySuccessful = true;
                         if (edit.action == CodeEdit.Action.REPLACE) {
                             edit.state = CodeEdit.State.PLACING;
                         } else {
@@ -484,7 +486,8 @@ implements
                                         };
                                     } else {
                                         activeEdit.state = switch (activeEdit.action) {
-                                            case REPLACE, BREAK -> CodeEdit.State.BREAKING;
+                                            case REPLACE -> activeEdit.breakWasDefinitelySuccessful ? CodeEdit.State.DONE : CodeEdit.State.BREAKING;
+                                            case BREAK -> CodeEdit.State.BREAKING;
                                             case PLACE -> CodeEdit.State.DONE;
                                         };
                                     }
