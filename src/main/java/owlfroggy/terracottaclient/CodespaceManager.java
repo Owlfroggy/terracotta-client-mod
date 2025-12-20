@@ -597,7 +597,8 @@ implements
                     ChunkPos closestChunk = null;
                     double smallestDistance = Integer.MAX_VALUE;
 
-                    for (ChunkPos pos : queuedChunkRescans) {
+                    List<ChunkPos> rescans = queuedChunkRescans.stream().toList();
+                    for (ChunkPos pos : rescans) {
                         Vec3d chunkStartPos = new Vec3d(pos.getStartX(),50,pos.getStartZ());
                         Vec3d playerFlatPos = client.player.getPos();
                         double distance = chunkStartPos.distanceTo(playerFlatPos);
