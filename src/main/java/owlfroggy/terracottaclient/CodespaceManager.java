@@ -260,6 +260,8 @@ implements
 
     private void processCodeEditResponse(Vec3i plotSpacePos, BlockState blockState, boolean cameFromClient) {
         CodeEdit edit = codeEditsByPlotPos.getOrDefault(plotSpacePos, null);
+        if (!TCClient.isChunkLoaded(TCClient.DF_STATE.toWorldSpace(plotSpacePos))) return;
+
         if (edit != null) {
             switch (edit.state) {
                 case WAITING_FOR_BREAK_VERIFICATION -> {
@@ -414,6 +416,7 @@ implements
                             Vec3d goalPos = Utils.toVec3d(stagedCodeEdits.getFirst().plotSpacePos).add(new Vec3d(-1,2.2,0));
 
                             // if movement is complete, switch to editing mode
+                            // TODO: make this not use client side position (better verification)
                             if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
                                 editState = GlobalEditState.EDITING;
                             } else {
@@ -431,8 +434,10 @@ implements
                         int maxChecks = stagedCodeEdits.size();
                         // loop through edits until an actionable one has been found
                         while (
-                            !(activeEdit.state == CodeEdit.State.PLACING || activeEdit.state == CodeEdit.State.BREAKING)
-                            || !client.world.isChunkLoaded(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos)))
+                            !(
+                                activeEdit.state == CodeEdit.State.PLACING || activeEdit.state == CodeEdit.State.BREAKING
+                                && TCClient.isChunkLoaded(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))
+                            )
                         ) {
                             // don't loop endlessly if there are no actionable edits
                             if (checkedEdits > maxChecks) {
@@ -451,7 +456,8 @@ implements
                                 if (activeEdit.state == CodeEdit.State.WAITING_FOR_BREAK_VERIFICATION || activeEdit.state == CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION) {
                                     activeEdit.inactivityCycles += 1;
                                 }
-                                if (activeEdit.inactivityCycles > 10) {
+                                int maxInactivityCycles = 10 + client.getNetworkHandler().getPlayerListEntry(client.player.getUuid()).getLatency()*50/1000;
+                                if (activeEdit.inactivityCycles > maxInactivityCycles) {
                                     if (client.world.getBlockState(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
                                         activeEdit.state = switch (activeEdit.action) {
                                             case REPLACE, PLACE -> CodeEdit.State.PLACING;

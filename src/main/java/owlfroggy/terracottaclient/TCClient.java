@@ -17,6 +17,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.chunk.WorldChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,6 +187,20 @@ public class TCClient implements ClientModInitializer {
             loadedChunks.clear();
         });
     }
+
+    public static boolean isChunkLoaded(ChunkPos chunkPos) {
+        return loadedChunks.containsKey(chunkPos);
+    }
+    public static boolean isChunkLoaded(BlockPos blockPos) {
+        return isChunkLoaded(new ChunkPos(blockPos));
+    }
+    public static boolean isChunkLoaded(Vec3i iPos) {
+        return isChunkLoaded(new BlockPos(iPos));
+    }
+    public static boolean isChunkLoaded(Vec3d pos) {
+        return isChunkLoaded(new Vec3i((int)pos.x,(int)pos.y,(int)pos.z));
+    }
+
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
         TCClient.MCI.player.sendMessage(Text.literal("mode change detected :D (" + newMode.toString() + ")"), false);
