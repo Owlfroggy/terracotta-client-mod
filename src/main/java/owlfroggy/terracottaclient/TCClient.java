@@ -53,6 +53,7 @@ public class TCClient implements ClientModInitializer {
     private static final ArrayList<ChunkReceiver> chunkReceivers = new ArrayList<>();
     private static final ArrayList<ClientBlockUpdateReceiver> clientBlockUpdateReceivers = new ArrayList<>();
     private static final ArrayList<PlotChangeReceiver> plotChangeReceivers = new ArrayList<>();
+    private static final ArrayList<ClientCommandReceiver> clientCommandReceivers = new ArrayList<>();
 
     public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
 
@@ -70,7 +71,7 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
 
 //                MCI.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(1, item));
-                context.getSource().sendFeedback(Text.literal("you edid ait!"));
+                context.getSource().sendFeedback(Text.literal("you edid ait! " + DF_STATE.hasUndergroundCodespace()));
                 MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
                 return 1;
             }));
@@ -256,6 +257,11 @@ public class TCClient implements ClientModInitializer {
             receiver.onPlotChanged(plotId, mode);
         }
     }
+    public static void fireClientCommandReceivers(String command) {
+        for (ClientCommandReceiver receiver : clientCommandReceivers) {
+            receiver.onClientSendCommand(command);
+        }
+    }
 
     private <T extends Manager> T setupManager(T manager) {
         if (manager instanceof ChatMessageReceiver chatMessageReceiver)
@@ -274,6 +280,8 @@ public class TCClient implements ClientModInitializer {
             clientBlockUpdateReceivers.add(clientBlockUpdateReceiver);
         if (manager instanceof PlotChangeReceiver plotChangeReceiver)
             plotChangeReceivers.add(plotChangeReceiver);
+        if (manager instanceof ClientCommandReceiver clientCommandReceiver)
+            clientCommandReceivers.add(clientCommandReceiver);
 
         return manager;
     }

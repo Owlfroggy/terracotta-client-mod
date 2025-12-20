@@ -15,6 +15,7 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import owlfroggy.terracottaclient.gameinterface.ChatMessageReceiver;
+import owlfroggy.terracottaclient.gameinterface.ClientCommandReceiver;
 import owlfroggy.terracottaclient.gameinterface.InvChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 
@@ -26,7 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 //    public Vec3d PlotOrigin = new Vec3d(5100,0,4675);
-public class DFState extends Manager implements ChatMessageReceiver, InvChangeReceiver, TeleportReceiver {
+public class DFState extends Manager implements ChatMessageReceiver, InvChangeReceiver, TeleportReceiver, ClientCommandReceiver {
     public enum Mode {
         SPAWN,
         DEV,
@@ -61,6 +62,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
     private static final Pattern MODE_REGEX = Pattern.compile("You are currently (?:at )?(\\w+)");
     private static final Pattern PLOT_REGEX = Pattern.compile("^→ (.+) \\[(\\d+)");
     private static final double TP_MAGIC_Y_VALUE = 52.15763;
+    private static final double TP_MAGIC_Y_VALUE_UNDERGROUND = TP_MAGIC_Y_VALUE - 12;
     private static final Text OUT_OF_BOUNDS_TEXT = (
         Text.empty()
         .append(Text.literal("Error: ").formatted(Formatting.RED))
@@ -114,6 +116,9 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
 
     private PlotType plotType = PlotType.UNKNOWN;
     public PlotType getPlotType() {return plotType;};
+
+    private boolean doesHaveUndergroundCodespace = false;
+    public boolean hasUndergroundCodespace() { return doesHaveUndergroundCodespace; }
 
     private int totalCodespaceChunks = -1;
     public int getTotalCodespaceChunks() {return totalCodespaceChunks;}
@@ -192,8 +197,10 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                 Optional<Vec3d> teleportResult = Optional.empty();
                 Vec3d plotOriginGuess;
 
-                // get plot origin
                 plotScanTargetPos.set(null);
+                doesHaveUndergroundCodespace = false;
+
+                // get plot origin
                 ptpFuture = new CompletableFuture<>();
                 TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp 0.0 %s 0.0",TP_MAGIC_Y_VALUE));
                 try {
@@ -202,6 +209,18 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                     plotOriginGuess = result.get().multiply(1, 0, 1);
                 } catch (Exception e) {
                     TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})",e.toString());
+                    plotScanActive = false;
+                    return;
+                }
+
+                // test for underground codespace
+                ptpFuture = new CompletableFuture<>();
+                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4",TP_MAGIC_Y_VALUE_UNDERGROUND));
+                try {
+                    Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
+                    if (result.isPresent()) doesHaveUndergroundCodespace = true;
+                } catch (Exception e) {
+                    TCClient.LOGGER.warn("Plot scan failed during underground codespace check due to not receiving a teleport response ({})",e.toString());
                     plotScanActive = false;
                     return;
                 }
@@ -315,7 +334,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
     public void onTeleported(Vec3d newPos, Vec3d oldPos) {
         if (
             ptpFuture != null && !ptpFuture.isDone() &&
-            newPos.y == TP_MAGIC_Y_VALUE &&
+            (newPos.y == TP_MAGIC_Y_VALUE || newPos.y == TP_MAGIC_Y_VALUE_UNDERGROUND) &&
             (plotScanTargetPos.get() == null || newPos.isInRange(plotScanTargetPos.get(),0.01))
         ) {
             ptpFuture.complete(Optional.of(newPos));
@@ -384,6 +403,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                 plotName = "Spawn";
                 plotOrigin = null;
                 plotType = PlotType.UNKNOWN;
+                doesHaveUndergroundCodespace = false;
             } else {
                 Matcher plotMatcher = PLOT_REGEX.matcher(messageStrLines[3]);
                 if (!plotMatcher.find()) break locateParser;
@@ -393,7 +413,22 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
             }
 
             if (oldPlotId != plotId) {
+                doesHaveUndergroundCodespace = false;
                 TCClient.firePlotChangeReceivers(plotId,mode);
+            }
+        }
+    }
+
+    public void onClientSendCommand(String command) {
+        // update client state when adding or removing underground codespace
+        if (command.startsWith("plot")) {
+            if (command.equalsIgnoreCase("plot codespace underground create")) {
+                doesHaveUndergroundCodespace = true;
+                return;
+            }
+            if (command.equalsIgnoreCase("plot codespace underground remove")) {
+                doesHaveUndergroundCodespace = false;
+                return;
             }
         }
     }
