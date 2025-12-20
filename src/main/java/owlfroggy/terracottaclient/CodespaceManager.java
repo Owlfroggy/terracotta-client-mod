@@ -103,6 +103,7 @@ implements
     private final ArrayList<CodeEdit> queuedCodeEdits = new ArrayList<>();
     private final ArrayList<CodeEdit> stagedCodeEdits = new ArrayList<>();
     private final HashMap<Vec3i, CodeEdit> codeEditsByPlotPos = new HashMap<>();
+    private CodeEdit currentBatchCoreEdit = null;
     private int stagedEditActiveIndex = 0;
     private ItemStack oldOffhandItem;
     private ItemStack oldFirstSlotItem;
@@ -125,6 +126,7 @@ implements
         queuedCodeEdits.clear();
         stagedCodeEdits.clear();
         codeEditsByPlotPos.clear();
+        currentBatchCoreEdit = null;
         oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(9);
 
@@ -395,7 +397,7 @@ implements
                             }
 
                             assert coreEdit != null;
-
+                            currentBatchCoreEdit = coreEdit;
                             stagedCodeEdits.add(coreEdit);
                             // TODO: make this position you on top of the chest instead of beside it
 
@@ -413,10 +415,9 @@ implements
 
                         // move to the right place
                         if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
-                            Vec3d goalPos = Utils.toVec3d(stagedCodeEdits.getFirst().plotSpacePos).add(new Vec3d(-1,2.2,0));
+                            Vec3d goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3d(-1,2.2,0));
 
                             // if movement is complete, switch to editing mode
-                            // TODO: make this not use client side position (better verification)
                             if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
                                 editState = GlobalEditState.EDITING;
                             } else {
@@ -429,6 +430,14 @@ implements
                     }
 
                     case EDITING -> {
+                        // if the player got moved away from the core edit, move them back
+                        Vec3d playerPos = client.player.getPos();
+                        Vec3d coreEditPos = Utils.toVec3d(TCClient.DF_STATE.toWorldSpace(currentBatchCoreEdit.plotSpacePos));
+                        if (!playerPos.isWithinRangeOf(coreEditPos,4,4)) {
+                            editState = GlobalEditState.MOVING;
+                            break codeEditLogic;
+                        }
+
                         CodeEdit activeEdit = stagedCodeEdits.get(stagedEditActiveIndex);
                         int checkedEdits = 1;
                         int maxChecks = stagedCodeEdits.size();
