@@ -1,22 +1,10 @@
 package owlfroggy.terracottaclient;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.scoreboard.Team;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
-
-import java.util.Objects;
-import java.util.Optional;
 
 public class MovementManager extends Manager implements TickEndReceiver, TeleportReceiver {
     enum MovementState {
@@ -34,12 +22,15 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     private Vec3d destinationPos;
     private Vec3d assumedPlayerPos;
     private MovementState currentMovementState = MovementState.NOT_MOVING;
-    private String currentMovementId = null;
+    /**
+     * Will be "" (empty string) if no movement is active
+     */
+    private String currentMovementId = "";
 
     @Override
     public void onTickEnd(MinecraftClient client) {
         if (TCClient.MCI.player == null) return;
-        if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) currentMovementState = MovementState.NOT_MOVING;
+        if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) stopMovement();
         if (currentMovementState == MovementState.NOT_MOVING) return;
 
         // skip avoid_code if we're already at that y level
@@ -67,7 +58,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
 
         // if we're already at the position, don't bother waiting around for extra ticks
         if (assumedPlayerPos.isInRange(destinationPos,0.01)) {
-            currentMovementState = MovementState.NOT_MOVING;
+            stopMovement();
             TCClient.MCI.player.setVelocity(0,0,0);
             return;
         }
@@ -110,12 +101,13 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         setMovementDestination(plotSpaceDestination, null);
     }
 
-    public void cancelMovement(String movementId) {
-        if (currentMovementId != null && movementId != currentMovementId) { return; }
+    public void stopMovement(String movementId) {
+        if (movementId != null && currentMovementId != null && movementId != currentMovementId) { return; }
         currentMovementState = MovementState.NOT_MOVING;
+        currentMovementId = "";
     }
-    public void cancelMovement() {
-        cancelMovement(null);
+    public void stopMovement() {
+        stopMovement(null);
     }
 
     public boolean isMoving() {

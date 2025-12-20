@@ -51,12 +51,12 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
         PlotType.BASIC, 51,
         PlotType.LARGE, 101,
         PlotType.MASSIVE, 301,
-        PlotType.MEGA, 301
+        PlotType.MEGA, 300
     ));public static final HashMap<PlotType, Integer> CODESPACE_X_SIZES = new HashMap<>(Map.of(
         PlotType.BASIC, 20,
         PlotType.LARGE, 20,
         PlotType.MASSIVE, 20,
-        PlotType.MEGA, 302
+        PlotType.MEGA, 300
     ));
     private static final Pattern MODE_REGEX = Pattern.compile("You are currently (?:at )?(\\w+)");
     private static final Pattern PLOT_REGEX = Pattern.compile("^→ (.+) \\[(\\d+)");
@@ -118,7 +118,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
             coords = coords.add(-1,0,CODESPACE_Z_SIZES.get(plotType));
         }
         if (corner == CodespaceCorner.BACK_LEFT || corner == CodespaceCorner.BACK_RIGHT) {
-            coords = coords.add(-CODESPACE_X_SIZES.get(plotType)-1,0,0);
+            coords = coords.add(-CODESPACE_X_SIZES.get(plotType),0,0);
         }
         return coords;
     }
@@ -200,7 +200,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                     switch (currentSizeGuess) {
                         case PlotType.BASIC -> plotSpacePos = new Vec3d(-1,TP_MAGIC_Y_VALUE,51);
                         case PlotType.LARGE -> plotSpacePos = new Vec3d(-1,TP_MAGIC_Y_VALUE,101);
-                        case PlotType.MASSIVE -> plotSpacePos = new Vec3d(-301,TP_MAGIC_Y_VALUE,1);
+                        case PlotType.MASSIVE -> plotSpacePos = new Vec3d(-300,TP_MAGIC_Y_VALUE,1);
                         default -> {
                             break sizeGuessLoop;
                         }
@@ -246,6 +246,7 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                 }
 
                 for (ChunkPos chunkPos : TCClient.loadedChunks.keySet().toArray(new ChunkPos[0])) {
+                    if (chunkPos == null) continue;
                     TCClient.CODESPACE_MANAGER.scanChunk(chunkPos);
                 }
 

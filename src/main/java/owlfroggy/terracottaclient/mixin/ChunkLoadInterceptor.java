@@ -13,6 +13,6 @@ import owlfroggy.terracottaclient.TCClient;
 public class ChunkLoadInterceptor {
     @Inject(method = "onChunkData", at = @At("TAIL"))
     public void init(ChunkDataS2CPacket packet, CallbackInfo info) {
-        TCClient.fireChunkLoadReceivers(new ChunkPos(packet.getChunkX(), packet.getChunkZ()));
+//        TCClient.fireChunkLoadReceivers(new ChunkPos(packet.getChunkX(), packet.getChunkZ()));
     }
 }

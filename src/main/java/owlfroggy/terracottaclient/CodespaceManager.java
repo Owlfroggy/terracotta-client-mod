@@ -1,6 +1,7 @@
 package owlfroggy.terracottaclient;
 
 import com.google.gson.JsonObject;
+import net.fabricmc.loader.impl.lib.sat4j.core.Vec;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
@@ -563,9 +564,25 @@ implements
                 if (
                     !TCClient.MOVEMENT_MANAGER.isMoving() &&
                     !queuedChunkRescans.isEmpty() &&
-                    (nextChunkToScan == null || !Objects.equals(TCClient.MOVEMENT_MANAGER.getCurrentMovementId(), "SCAN_QUEUED_CHUNK"))
+                    (nextChunkToScan == null || !TCClient.MOVEMENT_MANAGER.getCurrentMovementId().equals("SCAN_QUEUED_CHUNK"))
                 ) {
-                    nextChunkToScan = queuedChunkRescans.peek();
+                    ChunkPos closestChunk = null;
+                    double smallestDistance = Integer.MAX_VALUE;
+
+                    for (ChunkPos pos : queuedChunkRescans) {
+                        Vec3d chunkStartPos = new Vec3d(pos.getStartX(),50,pos.getStartZ());
+                        Vec3d playerFlatPos = client.player.getPos();
+                        double distance = chunkStartPos.distanceTo(playerFlatPos);
+                        if (distance < smallestDistance) {
+                            smallestDistance = distance;
+                            closestChunk = pos;
+                        }
+                    }
+                    nextChunkToScan = closestChunk;
+
+//                    TCClient.LOGGER.info(nextChunkToScan.toString());
+
+//                    nextChunkToScan = queuedChunkRescans.peek();
                     TCClient.MOVEMENT_MANAGER.setMovementDestination(
                         TCClient.DF_STATE.toPlotSpace(
                             TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3d(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
@@ -576,7 +593,7 @@ implements
 
                 if (nextChunkToScan != null && !queuedChunkRescans.contains(nextChunkToScan)) {
                     nextChunkToScan = null;
-                    TCClient.MOVEMENT_MANAGER.cancelMovement("SCAN_QUEUED_CHUNK");
+                    TCClient.MOVEMENT_MANAGER.stopMovement("SCAN_QUEUED_CHUNK");
                 }
             }
         }

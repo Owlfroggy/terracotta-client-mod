@@ -177,6 +177,7 @@ public class TCClient implements ClientModInitializer {
         });
         ClientChunkEvents.CHUNK_LOAD.register((clientWorld, worldChunk) -> {
             loadedChunks.put(worldChunk.getPos(),worldChunk);
+            TCClient.fireChunkLoadReceivers(worldChunk.getPos());
         });
         ClientChunkEvents.CHUNK_UNLOAD.register((clientWorld, worldChunk) -> {
             loadedChunks.remove(worldChunk.getPos());
