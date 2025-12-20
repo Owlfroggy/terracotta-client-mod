@@ -26,6 +26,8 @@ public class Utils {
         AttributeModifiersComponent.Entry attribute = new AttributeModifiersComponent.Entry(
             EntityAttributes.BLOCK_INTERACTION_RANGE,
             new EntityAttributeModifier(Identifier.of(TCClient.MOD_ID, attributeId),64.0d, EntityAttributeModifier.Operation.ADD_VALUE),
+            // VV for testing placement failure
+//            new EntityAttributeModifier(Identifier.of(TCClient.MOD_ID, attributeId),64.0d * ((Math.random() < 0.5) ? -1 : 1), EntityAttributeModifier.Operation.ADD_VALUE),
             AttributeModifierSlot.OFFHAND,
             AttributeModifiersComponent.Display.getDefault()
         );

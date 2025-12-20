@@ -1,7 +1,6 @@
 package owlfroggy.terracottaclient;
 
 import com.google.gson.JsonObject;
-import net.minecraft.block.AirBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
@@ -29,6 +28,7 @@ import net.minecraft.util.PlayerInput;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import owlfroggy.terracottaclient.codespacemanager.*;
+import owlfroggy.terracottaclient.gameinterface.ClientBlockUpdateReceiver;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
 import owlfroggy.terracottaclient.gameinterface.PlotChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
@@ -36,7 +36,13 @@ import owlfroggy.terracottaclient.mixin.SequencedPacketAccessor;
 
 import java.util.*;
 
-public class CodespaceManager extends Manager implements ChunkReceiver, PlotChangeReceiver, TickEndReceiver {
+public class CodespaceManager extends Manager
+implements
+    ChunkReceiver,
+    ClientBlockUpdateReceiver,
+    PlotChangeReceiver,
+    TickEndReceiver
+{
     private class CodeEdit {
         public enum Action {
             PLACE,
@@ -56,6 +62,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         public String templateData = null;
         public Action action;
         public State state;
+        public int inactivityCycles = 0;
 
         CodeEdit(Vec3i plotSpacePos, String templateData, Action action, State state) {
             this.plotSpacePos = plotSpacePos;
@@ -250,6 +257,39 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
         queuedChunkRescans.clear();
     }
 
+    private void processCodeEditResponse(Vec3i plotSpacePos, BlockState blockState, boolean cameFromClient) {
+        CodeEdit edit = codeEditsByPlotPos.getOrDefault(plotSpacePos, null);
+        if (edit != null) {
+            switch (edit.state) {
+                case WAITING_FOR_BREAK_VERIFICATION -> {
+                    // block was successfully broken
+                    if (blockState.getBlock() == Blocks.AIR && !cameFromClient) {
+                        if (edit.action == CodeEdit.Action.REPLACE) {
+                            edit.state = CodeEdit.State.PLACING;
+                        } else {
+                            edit.state = CodeEdit.State.DONE;
+                        }
+                    }
+                    else if (cameFromClient) {
+                        edit.state = CodeEdit.State.BREAKING;
+                    }
+                }
+                case WAITING_FOR_PLACE_VERIFICATION -> {
+                    // block was successfully placed
+                    if (
+                        blockState.getBlock() != Blocks.AIR &&
+                        blockState.getBlock() != Blocks.LIGHT_BLUE_TERRACOTTA &&
+                        !cameFromClient
+                    ) {
+                        edit.state = CodeEdit.State.DONE;
+                    } else {
+                        edit.state = CodeEdit.State.PLACING;
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * @param blockPos in WORLD SPACE!!
      */
@@ -391,7 +431,13 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                         // loop through edits until an actionable one has been found
                         while (
                             !(activeEdit.state == CodeEdit.State.PLACING || activeEdit.state == CodeEdit.State.BREAKING)
+                            || !client.world.isChunkLoaded(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos)))
                         ) {
+                            // don't loop endlessly if there are no actionable edits
+                            if (checkedEdits > maxChecks) {
+                                break codeEditLogic; // basically just waits this tick out
+                            }
+
                             // if the previous edit is done, remove it from the list
                             if (activeEdit.state == CodeEdit.State.DONE) {
                                 stagedCodeEdits.remove(stagedEditActiveIndex);
@@ -399,10 +445,26 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                                     editState = GlobalEditState.MOVING;
                                     break codeEditLogic;
                                 }
-                            }
-                            // don't loop endlessly if there are no actionable edits
-                            if (checkedEdits > maxChecks) {
-                                break codeEditLogic; // basically just waits this tick out
+                            } else {
+                                // retry edits that have gotten stuck in the waiting stage
+                                if (activeEdit.state == CodeEdit.State.WAITING_FOR_BREAK_VERIFICATION || activeEdit.state == CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION) {
+                                    activeEdit.inactivityCycles += 1;
+                                }
+                                if (activeEdit.inactivityCycles > 10) {
+                                    if (client.world.getBlockState(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
+                                        activeEdit.state = switch (activeEdit.action) {
+                                            case REPLACE, PLACE -> CodeEdit.State.PLACING;
+                                            case BREAK -> CodeEdit.State.DONE;
+                                        };
+                                    } else {
+                                        activeEdit.state = switch (activeEdit.action) {
+                                            case REPLACE, BREAK -> CodeEdit.State.BREAKING;
+                                            case PLACE -> CodeEdit.State.DONE;
+                                        };
+                                    }
+
+                                    TCClient.LOGGER.warn("Code edit at {} got stuck! Retrying with state: {}", activeEdit.plotSpacePos, activeEdit.state.name());
+                                }
                             }
 
                             checkedEdits++;
@@ -410,6 +472,8 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
                             if (stagedEditActiveIndex < 0) stagedEditActiveIndex = stagedCodeEdits.size()-1;
                             activeEdit = stagedCodeEdits.get(stagedEditActiveIndex);
                         }
+
+                        activeEdit.inactivityCycles = 0;
 
                         switch (activeEdit.state) {
                             case BREAKING -> {
@@ -424,13 +488,13 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
                                 // sneak
                                 PlayerInput sneakInput = new PlayerInput(
-                                settings.forwardKey.isPressed(),
-                                settings.backKey.isPressed(),
-                                settings.leftKey.isPressed(),
-                                settings.rightKey.isPressed(),
-                                settings.jumpKey.isPressed(),
-                                true,
-                                settings.sprintKey.isPressed()
+                                    settings.forwardKey.isPressed(),
+                                    settings.backKey.isPressed(),
+                                    settings.leftKey.isPressed(),
+                                    settings.rightKey.isPressed(),
+                                    settings.jumpKey.isPressed(),
+                                    true,
+                                    settings.sprintKey.isPressed()
                                 );
                                 client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(sneakInput));
 
@@ -443,13 +507,13 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
                                 // unsneak
                                 PlayerInput unsneakInput = new PlayerInput(
-                                settings.forwardKey.isPressed(),
-                                settings.backKey.isPressed(),
-                                settings.leftKey.isPressed(),
-                                settings.rightKey.isPressed(),
-                                settings.jumpKey.isPressed(),
-                                settings.sneakKey.isPressed(),
-                                settings.sprintKey.isPressed()
+                                    settings.forwardKey.isPressed(),
+                                    settings.backKey.isPressed(),
+                                    settings.leftKey.isPressed(),
+                                    settings.rightKey.isPressed(),
+                                    settings.jumpKey.isPressed(),
+                                    settings.sneakKey.isPressed(),
+                                    settings.sprintKey.isPressed()
                                 );
                                 client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(unsneakInput));
 
@@ -479,7 +543,7 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
 
                                 // place item
                                 BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
-                                    BlockHitResult hit = new BlockHitResult(
+                                BlockHitResult hit = new BlockHitResult(
                                     blockPos.toBottomCenterPos(),
                                     Direction.DOWN,
                                     blockPos,
@@ -539,36 +603,17 @@ public class CodespaceManager extends Manager implements ChunkReceiver, PlotChan
             BlockPos immutablePos = blockPos.toImmutable();
             queuedBlockRescans.add(immutablePos);
 
-            // validating code edit operations
             Vec3i plotSpacePos = TCClient.DF_STATE.toPlotSpace(immutablePos);
-            CodeEdit edit = codeEditsByPlotPos.getOrDefault(plotSpacePos, null);
-            if (edit != null) {
-                switch (edit.state) {
-                    case WAITING_FOR_BREAK_VERIFICATION -> {
-                        // block was successfully broken
-                        if (blockState.getBlock() == Blocks.AIR) {
-                            if (edit.action == CodeEdit.Action.REPLACE) {
-                                edit.state = CodeEdit.State.PLACING;
-                            } else {
-                                edit.state = CodeEdit.State.DONE;
-                            }
-                        }
-                        // server sent back original block
-                        else {
-                            edit.state = CodeEdit.State.BREAKING;
-                        }
-                    }
-                    case WAITING_FOR_PLACE_VERIFICATION -> {
-                        // block was not successfully placed
-                        if (blockState.getBlock() == Blocks.AIR) {
-                            edit.state = CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION;
-                        } else {
-                            edit.state = CodeEdit.State.DONE;
-                        }
-                    }
-                }
-            }
+            processCodeEditResponse(plotSpacePos,blockState,false);
         });
+    }
+
+    @Override
+    public void onClientBlockUpdate(BlockPos pos, BlockState state) {
+        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+        if (plotOrigin == null) return;
+
+        processCodeEditResponse(TCClient.DF_STATE.toPlotSpace(pos), state,true);
     }
 
     @Override
