@@ -85,6 +85,7 @@ implements
         "PROCESS", TemplateType.PROCESS
     ));
     private final ItemStack REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
+    private static final int TEMPLATE_VACUUM_SLOT = 9;
 
     public final HashMap<Vec3i, CachedTemplate> templatesByLocation = new HashMap<>();
     public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
@@ -128,7 +129,7 @@ implements
         codeEditsByPlotPos.clear();
         currentBatchCoreEdit = null;
         oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
-        oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(9);
+        oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(TEMPLATE_VACUUM_SLOT);
 
         //TODO: make it be able to take positions from templates that are being deleted
         Queue<Vec3i> openPositions = new LinkedList<>(); //plot space
@@ -372,8 +373,8 @@ implements
                     client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
                     client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
 
-                    client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, oldFirstSlotItem));
-                    client.player.getInventory().setStack(9,oldFirstSlotItem);
+                    client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem));
+                    client.player.getInventory().setStack(TEMPLATE_VACUUM_SLOT,oldFirstSlotItem);
 
                     client.player.playerScreenHandler.sendContentUpdates();
                     editState = GlobalEditState.IDLE;
@@ -497,7 +498,7 @@ implements
 
                                 // clear a slot for the new template to go into
                                 // (so a billion dropped items dont spawn)
-                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(9, new ItemStack(Items.AIR)));
+                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(TEMPLATE_VACUUM_SLOT, new ItemStack(Items.AIR)));
 
                                 // make sure reach is extended
                                 client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, REACH_EXTENDER));
