@@ -78,6 +78,22 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager.literal("tcclientdfstate").executes(context -> {
+                context.getSource().sendFeedback(Text.literal(
+                "=- Internal DF state -="
+                + "\nRank: " + DF_STATE.getRank()
+                + "\nMode: " + DF_STATE.getMode()
+                + "\n\nPlot Name: " + DF_STATE.getPlotName()
+                + "\nPlot Id: " + DF_STATE.getPlotId()
+                + "\nPlot Origin: " + DF_STATE.getPlotOrigin()
+                + "\nPlot Type: " + DF_STATE.getPlotType()
+                + "\nHas Underground Codespace: " + DF_STATE.hasUndergroundCodespace()
+                ));
+                return 1;
+            }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("rescanplot").executes(context -> {
                 DF_STATE.scanPlot();
                 return 1;

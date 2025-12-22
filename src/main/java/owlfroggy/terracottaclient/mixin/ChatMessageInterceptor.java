@@ -19,7 +19,6 @@ public class ChatMessageInterceptor {
             boolean shouldSupprsesOOB = TCClient.DF_STATE.plotScanActive;
             boolean isEditingCode = TCClient.CODESPACE_MANAGER.isEditingCode();
 
-            TCClient.fireChatMessageReceivers(packet.content());
 
             if (shouldSuppressLocate && TCClient.DF_STATE.isMessageLocateResult(packet.content()))
                 info.cancel();
@@ -27,7 +26,11 @@ public class ChatMessageInterceptor {
                 info.cancel();
             if (isEditingCode && TCClient.DF_STATE.isMessageFuncRenameHint(packet.content()))
                 info.cancel();
+            if (TCClient.DF_STATE.shouldHideNextWhois() && TCClient.DF_STATE.isMessageWhoisResult(packet.content()))
+                info.cancel();
 //            TCClient.LOGGER.info(packet.content().toString());
+
+            TCClient.fireChatMessageReceivers(packet.content());
         }
-	}
+    }
 }

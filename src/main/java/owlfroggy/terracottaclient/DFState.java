@@ -1,11 +1,14 @@
 package owlfroggy.terracottaclient;
 
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.scoreboard.Team;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -14,10 +17,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
-import owlfroggy.terracottaclient.gameinterface.ChatMessageReceiver;
-import owlfroggy.terracottaclient.gameinterface.ClientCommandReceiver;
-import owlfroggy.terracottaclient.gameinterface.InvChangeReceiver;
-import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
+import owlfroggy.terracottaclient.gameinterface.*;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -27,12 +27,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 //    public Vec3d PlotOrigin = new Vec3d(5100,0,4675);
-public class DFState extends Manager implements ChatMessageReceiver, InvChangeReceiver, TeleportReceiver, ClientCommandReceiver {
+public class DFState extends Manager
+implements
+    ChatMessageReceiver,
+    InvChangeReceiver,
+    TeleportReceiver,
+    ClientCommandReceiver,
+    TickEndReceiver
+{
     public enum Mode {
         SPAWN,
         DEV,
         PLAY,
         BUILD,
+    }
+    public enum Rank {
+        NON,
+        NOBLE,
+        EMPEROR,
+        MYTHIC,
+        OVERLORD
     }
     public enum PlotType {
         UNKNOWN,
@@ -101,6 +115,9 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
     public boolean modeRefreshQueued = false;
     public boolean plotScanActive = false;
 
+    private Rank rank = null;
+    public Rank getRank() { return rank != null ? rank : Rank.NON; }
+
     private Vec3d plotOrigin;
     public Vec3d getPlotOrigin() {return plotOrigin;}
     public Vec3i getIntPlotOrigin() {return new Vec3i((int)plotOrigin.x, (int)plotOrigin.y, (int)plotOrigin.z);}
@@ -125,6 +142,11 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
 
     private CompletableFuture<Optional<Vec3d>> ptpFuture;
     private AtomicReference<Vec3d> plotScanTargetPos = new AtomicReference<Vec3d>(null);
+
+    private boolean hideNextWhois = false;
+    public boolean shouldHideNextWhois() { return hideNextWhois; }
+
+    private int t = 0;
 
     public Vec3d getPlotCorner(CodespaceCorner corner){
         if (plotOrigin == null)
@@ -315,11 +337,24 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
     public boolean isMessageLocateResult(Text message) {
         String[] messageStrLines = message.getString().split("\n");
         ClickEvent clickEvent = message.getStyle().getClickEvent();
+        // /locate parsing checks the click event since that cannot be faked by plots
         return (
             clickEvent instanceof ClickEvent.RunCommand(String command) &&
             (command.startsWith("/server") || command.startsWith("/join")) &&
             messageStrLines.length >= 2 &&
             messageStrLines[1].startsWith("You are currently")
+        );
+    }
+
+    public boolean isMessageWhoisResult(Text message) {
+        String[] messageStrLines = message.getString().split("\n");
+        // /locate parsing checks the click event since that cannot be faked by plots
+        return (
+            messageStrLines.length >= 4
+            && messageStrLines[1].startsWith("Profile of ")
+            && messageStrLines[3].startsWith("→ Ranks: ")
+            && messageStrLines[4].startsWith("→ Badges: ")
+            && messageStrLines[5].startsWith("→ Joined: ")
         );
     }
 
@@ -379,7 +414,6 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
             ptpFuture.complete(Optional.empty());
         }
 
-        // /locate parsing checks the click event since that cannot be faked by plots
         locateParser: if (isMessageLocateResult(message)) {
             Mode oldMode = mode;
 
@@ -417,6 +451,22 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                 TCClient.firePlotChangeReceivers(plotId,mode);
             }
         }
+
+        whoisParser: if (isMessageWhoisResult(message)) {
+            String playerName = TCClient.MCI.player.getName().getString();
+            if (!messageStrLines[1].equals("Profile of "+playerName+ " "))
+                break whoisParser;
+
+            hideNextWhois = false;
+            String rankLine = messageStrLines[3];
+            rank = Rank.NON;
+            if (rankLine.contains("Overlord")) rank = Rank.OVERLORD;
+            else if (rankLine.contains("Mythic")) rank = Rank.MYTHIC;
+            else if (rankLine.contains("Emperor")) rank = Rank.EMPEROR;
+            else if (rankLine.contains("Noble")) rank = Rank.NOBLE;
+
+            TCClient.LOGGER.info("Detected rank: {}",rank);
+        }
     }
 
     public void onClientSendCommand(String command) {
@@ -430,6 +480,15 @@ public class DFState extends Manager implements ChatMessageReceiver, InvChangeRe
                 doesHaveUndergroundCodespace = false;
                 return;
             }
+        }
+    }
+
+    public void onTickEnd(MinecraftClient client) {
+        t++;
+        // figure out rank
+        if (rank == null && t % 20 == 0 && !hideNextWhois && mode != Mode.PLAY && !TCClient.loadedChunks.isEmpty()) {
+            hideNextWhois = true;
+            TCClient.COMMAND_MANAGER.queueCommand("whois");
         }
     }
 }
