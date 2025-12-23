@@ -227,12 +227,13 @@ implements
                 doesHaveUndergroundCodespace = false;
 
                 // get plot origin
+                // tries teleporting to x -1 so that plots without a buildspace (worldplots) still work
                 ptpFuture = new CompletableFuture<>();
-                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp 0.0 %s 0.0",TP_MAGIC_Y_VALUE));
+                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0",TP_MAGIC_Y_VALUE));
                 try {
                     Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
                     if (result.isEmpty()) { throw new RuntimeException("Failed to get plot origin"); }
-                    plotOriginGuess = result.get().multiply(1, 0, 1);
+                    plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0,0.0,0.0);
                 } catch (Exception e) {
                     TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})",e.toString());
                     plotScanActive = false;
