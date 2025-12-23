@@ -148,6 +148,10 @@ implements
 
     private int t = 0;
 
+    public boolean hasRank(Rank r) {
+        return getRank().ordinal() >= r.ordinal();
+    }
+
     public Vec3d getPlotCorner(CodespaceCorner corner){
         if (plotOrigin == null)
             throw new RuntimeException("Cannot get plot corner because plot origin is unknown");

@@ -26,12 +26,25 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
      * Will be "" (empty string) if no movement is active
      */
     private String currentMovementId = "";
+    private int oldMovementSpeed = 100;
+    private boolean movementSpeedIsModified = false;
+    private boolean holdFastSpeed = false;
+    private int idleTicks = 0;
 
     @Override
     public void onTickEnd(MinecraftClient client) {
         if (TCClient.MCI.player == null) return;
         if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) stopMovement();
-        if (currentMovementState == MovementState.NOT_MOVING) return;
+
+        if (currentMovementState == MovementState.NOT_MOVING) {
+            idleTicks++;
+            if (idleTicks > 3 && movementSpeedIsModified && !holdFastSpeed) {
+                TCClient.COMMAND_MANAGER.queueCommand("flightspeed "+oldMovementSpeed);
+                movementSpeedIsModified = false;
+            }
+            return;
+        }
+        idleTicks = 0;
 
         // skip avoid_code if we're already at that y level
         if (currentMovementState == MovementState.AVOID_CODE && assumedPlayerPos.y == assumedPlayerPos.y - (assumedPlayerPos.y%5) + 2.2) {
@@ -83,6 +96,12 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     public void setMovementDestination(Vec3d plotSpaceDestination, String movementId) {
         if (TCClient.MCI.player == null) return;
 
+        if (!movementSpeedIsModified && TCClient.DF_STATE.hasRank(DFState.Rank.NOBLE)) {
+            oldMovementSpeed = (int)(TCClient.MCI.player.getAbilities().getFlySpeed()*100/.05);
+            TCClient.COMMAND_MANAGER.queueCommand("flightspeed 1000");
+            movementSpeedIsModified = true;
+        }
+
         currentMovementId = movementId;
         currentMovementState = MovementState.AVOID_CODE;
         destinationPos = TCClient.DF_STATE.toWorldSpace(plotSpaceDestination);
@@ -99,6 +118,10 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     }
     public void setMovementDestination(Vec3i plotSpaceDestination) {
         setMovementDestination(plotSpaceDestination, null);
+    }
+
+    public void setShouldHoldFastSpeed(boolean val) {
+        holdFastSpeed = val;
     }
 
     public void stopMovement(String movementId) {

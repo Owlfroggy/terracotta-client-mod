@@ -131,6 +131,7 @@ implements
         currentBatchCoreEdit = null;
         oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(TEMPLATE_VACUUM_SLOT);
+        TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(true);
 
         //TODO: make it be able to take positions from templates that are being deleted
         Queue<Vec3i> openPositions = new LinkedList<>(); //plot space
@@ -385,7 +386,7 @@ implements
 
         if (TCClient.DF_STATE.getMode() == DFState.Mode.DEV) {
             codeEditLogic: if (editState != GlobalEditState.IDLE) {
-                //code editing
+                // break out of editor mode if all edits have been completed
                 if (queuedCodeEdits.isEmpty() && stagedCodeEdits.isEmpty()) {
                     client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
                     client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
@@ -393,11 +394,14 @@ implements
                     client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem));
                     client.player.getInventory().setStack(TEMPLATE_VACUUM_SLOT,oldFirstSlotItem);
 
+                    TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
+
                     client.player.playerScreenHandler.sendContentUpdates();
                     editState = GlobalEditState.IDLE;
                     break codeEditLogic;
                 }
 
+                //code editing
                 switch (editState) {
                     case MOVING -> {
                         // stage new edits
