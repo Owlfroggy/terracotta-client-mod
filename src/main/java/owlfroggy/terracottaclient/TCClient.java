@@ -1,5 +1,7 @@
 package owlfroggy.terracottaclient;
 
+import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -21,10 +23,12 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.chunk.WorldChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -44,6 +48,7 @@ public class TCClient implements ClientModInitializer {
     public static DFState DF_STATE;
     public static MovementManager MOVEMENT_MANAGER;
     public static CodespaceManager CODESPACE_MANAGER;
+    public static APIServer API_SERVER;
 
     private static final ArrayList<ChatMessageReceiver> chatMessageReceivers = new ArrayList<>();
     private static final ArrayList<ModeChangeReceiver> modeChangeReceivers = new ArrayList<>();
@@ -64,9 +69,62 @@ public class TCClient implements ClientModInitializer {
         MOVEMENT_MANAGER = setupManager(new MovementManager());
         CODESPACE_MANAGER = setupManager(new CodespaceManager());
 
+        API_SERVER = new APIServer(new InetSocketAddress("localhost", 39893));
+        Thread apiServerThread = new Thread(() -> {
+            API_SERVER.run();
+        });
+        apiServerThread.setName("TCClient API");
+        apiServerThread.start();
+
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
         // Proceed with mild caution.
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager
+                .literal("tcallow")
+                .then(
+                    ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
+                    .executes(context -> {
+                        int appId = IntegerArgumentType.getInteger(context, "app_id");
+                        try {
+                            API_SERVER.allowAppAuthentication(appId);
+                        } catch (Exception e) {
+                            context.getSource().sendError(Text.literal("Error: %s".formatted(e.getMessage())));
+                            return 0;
+                        }
+                        context.getSource().sendFeedback(Text.literal("Allowed %s".formatted(appId)));
+                        return 1;
+                    })
+                ).executes(context -> {
+                    context.getSource().sendError(Text.literal("No app id provided."));
+                        return 0;
+                })
+            );
+        });
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommandManager
+                .literal("tcdeny")
+                .then(
+                    ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
+                    .executes(context -> {
+                        int appId = IntegerArgumentType.getInteger(context, "app_id");
+                        try {
+                            API_SERVER.denyAppAuthentication(appId);
+                        } catch (Exception e) {
+                            context.getSource().sendError(Text.literal("Error: %s".formatted(e.getMessage())));
+                            return 0;
+                        }
+                        context.getSource().sendFeedback(Text.literal("Allowed %s".formatted(appId)));
+                        return 1;
+                    })
+                ).executes(context -> {
+                    context.getSource().sendError(Text.literal("No app id provided."));
+                        return 0;
+                })
+            );
+        });
+
+
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
 
@@ -277,6 +335,10 @@ public class TCClient implements ClientModInitializer {
         for (ClientCommandReceiver receiver : clientCommandReceivers) {
             receiver.onClientSendCommand(command);
         }
+    }
+
+    private void acceptOrDenyConnection(int appId, boolean accept) {
+
     }
 
     private <T extends Manager> T setupManager(T manager) {
