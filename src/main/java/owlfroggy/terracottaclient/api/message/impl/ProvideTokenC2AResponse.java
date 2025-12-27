@@ -1,6 +1,8 @@
 package owlfroggy.terracottaclient.api.message.impl;
 
 import com.google.gson.JsonObject;
+import owlfroggy.terracottaclient.api.RequestMethod;
+import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 
 public class ProvideTokenC2AResponse extends Response {
@@ -11,5 +13,9 @@ public class ProvideTokenC2AResponse extends Response {
     @Override
     protected void buildOn(JsonObject out, JsonObject data) {
         super.buildOn(out, data);
+    }
+
+    public static Request parse(JsonObject message, JsonObject data) {
+        return new ProvideTokenA2CRequest(data.get("token").getAsString());
     }
 }

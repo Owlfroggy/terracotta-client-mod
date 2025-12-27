@@ -3,6 +3,7 @@ package owlfroggy.terracottaclient.api;
 import com.google.gson.*;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.datafixers.util.Function8;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.text.Text;
 import org.java_websocket.WebSocket;
@@ -11,19 +12,25 @@ import org.java_websocket.server.WebSocketServer;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.message.Message;
 import owlfroggy.terracottaclient.api.message.Request;
+import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.ProvideTokenA2CRequest;
+import owlfroggy.terracottaclient.api.message.impl.ProvideTokenC2AResponse;
 import owlfroggy.terracottaclient.api.message.impl.RequestTokenA2CRequest;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class APIServer extends WebSocketServer {
     private static final Path TOKEN_FILE_PATH = TCClient.getConfigPath().resolve("tokens.json");
@@ -133,43 +140,15 @@ public class APIServer extends WebSocketServer {
         messageParser: switch (type) {
             case "request" -> {
                 String method = json.get("method").getAsString();
-                switch (method) {
-                    case "request_token" -> {
-                        HashSet<Permission> permissions = new HashSet<>();
-                        for (JsonElement permission : data.get("permissions").getAsJsonArray()) {
-                            Permission p;
-                            try { p = Permission.valueOf(permission.getAsString()); }
-                            catch (Exception e) { throw new RuntimeException("invalid_permission"); }
-                            permissions.add(p);
-                        }
-                        message = new RequestTokenA2CRequest(data.get("app_name").getAsString(), permissions);
-                        break messageParser;
-                    }
 
-                    case "provide_token" -> {
-                        message = new ProvideTokenA2CRequest(data.get("token").getAsString());
-                        break messageParser;
-                    }
-
-                    case "initiate_code_edit" -> {
-                        // todo: better error handling
-                        String[] updateTemplates = data.getAsJsonArray("place_templates")
-                            .asList().stream().map(JsonElement::getAsString).toArray(String[]::new);
-
-                        TemplateIdentifier[] breakTemplates = data.getAsJsonArray("break_templates")
-                            .asList().stream().map(
-                                (JsonElement elm) -> new TemplateIdentifier(
-                                    TemplateType.valueOf(elm.getAsJsonObject().get("type").getAsString()),
-                                    elm.getAsJsonObject().get("name").getAsString()
-                                )
-                            ).toArray(TemplateIdentifier[]::new);
-
-                        message = new InitiateCodeEditA2CRequest(updateTemplates, breakTemplates);
-                        break messageParser;
-                    }
-
+                // request types must be mapped here or else they won't parse
+                BiFunction<JsonObject, JsonObject, Request> parser = (switch (method) {
+                    case "request_token" -> RequestTokenA2CRequest::parse;
+                    case "provide_token" -> ProvideTokenC2AResponse::parse;
+                    case "initiate_code_edit" -> InitiateCodeEditA2CRequest::parse;
                     default -> throw new RuntimeException("invalid_request_method");
-                }
+                });
+                message = parser.apply(json, data);
             }
             default -> throw new RuntimeException("invalid_message_type");
         }
