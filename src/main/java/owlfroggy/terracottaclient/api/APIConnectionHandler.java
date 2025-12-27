@@ -59,12 +59,21 @@ public class APIConnectionHandler {
         return id;
     }
 
+    public boolean isAuthenticated() {
+        return token != null;
+    }
+
+    public boolean isPendingAuthentication() {
+        return authenticationRequest != null;
+    }
+
     public void allowAuthentication() {
         if (authenticationRequest instanceof RequestTokenA2CRequest r) {
             String tokenString = generateTokenString();
             permissions = r.getPermissions();
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
             respond(r,new RequestTokenC2AResponse(tokenString));
+            authenticationRequest = null;
             TCClient.MCI.player.sendMessage(Text.literal("authed "+appName).withColor(Colors.GREEN),false);
         }
     }

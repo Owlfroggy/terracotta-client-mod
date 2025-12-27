@@ -1,6 +1,10 @@
 package owlfroggy.terracottaclient.api;
 
 import com.google.gson.*;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.text.Text;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -157,16 +161,43 @@ public class APIServer extends WebSocketServer {
         return message;
     }
 
-    public void allowAppAuthentication(int appId) {
-        if (!connectedAppsById.containsKey(appId))
-            throw new RuntimeException("No connected app has id '%s'".formatted(appId));
-        connectedAppsById.get(appId).allowAuthentication();
-    }
+    /** this is the command handler for /tcallow and /tcdeny */
+    public static int decideAppAuthentication(CommandContext<FabricClientCommandSource> commandContext, boolean allow) {
+        if (TCClient.API_SERVER == null)
+            commandContext.getSource().sendError(Text.literal("Terracotta API has not started yet."));
 
-    public void denyAppAuthentication(int appId) {
-        if (!connectedAppsById.containsKey(appId))
-            throw new RuntimeException("No connected app has id '%s'".formatted(appId));
-        connectedAppsById.get(appId).denyAuthentication();
+        int appId = IntegerArgumentType.getInteger(commandContext, "app_id");
+        if (!TCClient.API_SERVER.connectedAppsById.containsKey(appId)) {
+            commandContext.getSource().sendError(Text.literal("No connected app has id '%s'".formatted(appId)));
+            return 0;
+        }
+        APIConnectionHandler app = TCClient.API_SERVER.connectedAppsById.get(appId);
+
+        if (!app.isPendingAuthentication()) {
+            if (app.isAuthenticated()) {
+                if (allow) {
+                    commandContext.getSource().sendError(Text.literal("App has already been authenticated."));
+                    return 0;
+                } else {
+                    //TODO: Make this actually work
+                    commandContext.getSource().sendError(Text.literal("App has already been authenticated. If you want to disconnect the app, click [here]."));
+                    return 0;
+                }
+            } else {
+                commandContext.getSource().sendError(Text.literal("App has already been denied authentication."));
+                return 0;
+            }
+        }
+
+        if (allow) {
+            app.allowAuthentication();
+            commandContext.getSource().sendFeedback(Text.literal("Allowed %s".formatted(appId)));
+        } else {
+            app.denyAuthentication();
+            commandContext.getSource().sendFeedback(Text.literal("Denied %s".formatted(appId)));
+        }
+
+        return 1;
     }
 
     //=- websocket stuff below -=\\

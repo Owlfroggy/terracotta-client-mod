@@ -82,51 +82,33 @@ public class TCClient implements ClientModInitializer {
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
         // Proceed with mild caution.
+
+        //tcallow
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager
                 .literal("tcallow")
                 .then(
                     ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
-                    .executes(context -> {
-                        int appId = IntegerArgumentType.getInteger(context, "app_id");
-                        try {
-                            API_SERVER.allowAppAuthentication(appId);
-                        } catch (Exception e) {
-                            context.getSource().sendError(Text.literal("Error: %s".formatted(e.getMessage())));
-                            return 0;
-                        }
-                        context.getSource().sendFeedback(Text.literal("Allowed %s".formatted(appId)));
-                        return 1;
-                    })
+                    .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, true))
                 ).executes(context -> {
                     context.getSource().sendError(Text.literal("No app id provided."));
                         return 0;
                 })
             );
         });
+        //tcdeny
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager
                 .literal("tcdeny")
                 .then(
                     ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
-                    .executes(context -> {
-                        int appId = IntegerArgumentType.getInteger(context, "app_id");
-                        try {
-                            API_SERVER.denyAppAuthentication(appId);
-                        } catch (Exception e) {
-                            context.getSource().sendError(Text.literal("Error: %s".formatted(e.getMessage())));
-                            return 0;
-                        }
-                        context.getSource().sendFeedback(Text.literal("Allowed %s".formatted(appId)));
-                        return 1;
-                    })
+                    .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, false))
                 ).executes(context -> {
                     context.getSource().sendError(Text.literal("No app id provided."));
                         return 0;
                 })
             );
         });
-
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
