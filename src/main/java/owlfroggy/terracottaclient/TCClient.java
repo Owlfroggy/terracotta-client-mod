@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.item.ItemStack;
@@ -29,6 +30,8 @@ import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
 
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -276,6 +279,19 @@ public class TCClient implements ClientModInitializer {
         return isChunkLoaded(new Vec3i((int)pos.x,(int)pos.y,(int)pos.z));
     }
 
+    public static Path getConfigPath() {
+        Path p = FabricLoader.getInstance().getConfigDir().resolve("tcclient");
+        boolean exists = Files.exists(p);
+        if (!Files.isDirectory(p) && exists) throw new RuntimeException("Terracotta config path is not accessible (is not a directory)");
+        try {
+            if (!exists)
+                Files.createDirectories(p);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return p;
+    }
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
         TCClient.MCI.player.sendMessage(Text.literal("mode change detected :D (" + newMode.toString() + ")"), false);

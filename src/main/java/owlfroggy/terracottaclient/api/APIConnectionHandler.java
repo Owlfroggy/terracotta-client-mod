@@ -12,6 +12,7 @@ import owlfroggy.terracottaclient.api.message.impl.ProvideTokenA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.RequestTokenA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.RequestTokenC2AResponse;
 
+import java.time.Instant;
 import java.util.HashSet;
 
 public class APIConnectionHandler {
@@ -26,7 +27,7 @@ public class APIConnectionHandler {
 
     // auth-related
     private String appName = "<uninitialized app>";
-    private String token = null;
+    private APIToken token = null;
     private Request authenticationRequest = null;
     private HashSet<Permission> permissions;
 
@@ -38,7 +39,7 @@ public class APIConnectionHandler {
         homeThread = Thread.currentThread();
     }
 
-    private String generateToken() {
+    private String generateTokenString() {
         StringBuilder t = new StringBuilder();
         for (int i = 0; i < TOKEN_LENGTH; i++) {
             t.append(TOKEN_CHARACTERS[(int) (Math.random() * TOKEN_CHARACTERS.length)]);
@@ -59,9 +60,10 @@ public class APIConnectionHandler {
 
     public void allowAuthentication() {
         if (authenticationRequest instanceof RequestTokenA2CRequest r) {
-            token = generateToken();
+            String tokenString = generateTokenString();
             permissions = r.getPermissions();
-            respond(r,new RequestTokenC2AResponse(token));
+            token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
+            respond(r,new RequestTokenC2AResponse(tokenString));
             TCClient.MCI.player.sendMessage(Text.literal("authed "+appName).withColor(Colors.GREEN),false);
             // TODO: save token somewhere (include its permissions, name, and expire date)
         }
