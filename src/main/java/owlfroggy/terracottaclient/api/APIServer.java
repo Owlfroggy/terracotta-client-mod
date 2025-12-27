@@ -11,8 +11,11 @@ import org.java_websocket.server.WebSocketServer;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.message.Message;
 import owlfroggy.terracottaclient.api.message.Request;
+import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.ProvideTokenA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.RequestTokenA2CRequest;
+import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
+import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -145,6 +148,23 @@ public class APIServer extends WebSocketServer {
 
                     case "provide_token" -> {
                         message = new ProvideTokenA2CRequest(data.get("token").getAsString());
+                        break messageParser;
+                    }
+
+                    case "initiate_code_edit" -> {
+                        // todo: better error handling
+                        String[] updateTemplates = data.getAsJsonArray("place_templates")
+                            .asList().stream().map(JsonElement::getAsString).toArray(String[]::new);
+
+                        TemplateIdentifier[] breakTemplates = data.getAsJsonArray("break_templates")
+                            .asList().stream().map(
+                                (JsonElement elm) -> new TemplateIdentifier(
+                                    TemplateType.valueOf(elm.getAsJsonObject().get("type").getAsString()),
+                                    elm.getAsJsonObject().get("name").getAsString()
+                                )
+                            ).toArray(TemplateIdentifier[]::new);
+
+                        message = new InitiateCodeEditA2CRequest(updateTemplates, breakTemplates);
                         break messageParser;
                     }
 

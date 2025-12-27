@@ -4,16 +4,13 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Colors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
+import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.message.ErrorResponse;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
-import owlfroggy.terracottaclient.api.message.impl.ProvideTokenA2CRequest;
-import owlfroggy.terracottaclient.api.message.impl.ProvideTokenC2AResponse;
-import owlfroggy.terracottaclient.api.message.impl.RequestTokenA2CRequest;
-import owlfroggy.terracottaclient.api.message.impl.RequestTokenC2AResponse;
+import owlfroggy.terracottaclient.api.message.impl.*;
 
-import java.time.Instant;
 import java.util.HashSet;
 
 public class APIConnectionHandler {
@@ -122,6 +119,34 @@ public class APIConnectionHandler {
                 ),false);
                 respond(r, new ProvideTokenC2AResponse());
             }
+        }
+        else if (request instanceof InitiateCodeEditA2CRequest r) {
+            if (TCClient.CODESPACE_MANAGER.isEditingCode()) {
+                respond(r, new ErrorResponse(
+                    APIErrorCode.EDIT_IN_PROGRESS,
+                    "A code edit operation is already in progress."
+                ));
+                return;
+            }
+            if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) {
+                respond(r, new ErrorResponse(
+                    APIErrorCode.NOT_IN_DEV,
+                    "Code cannot be edited when not in dev mode."
+                ));
+                return;
+            }
+
+            try {
+                TCClient.CODESPACE_MANAGER.editCode(r.getPlaceTemplates(), r.getBreakTemplates());
+            } catch (Exception e) {
+                respond(r, new ErrorResponse(
+                    APIErrorCode.EDIT_FAILED,
+                    e.getMessage()
+                ));
+                return;
+            }
+            // TODO: make this response wait until the code edit has actually finished
+            respond(r, new InitiateCodeEditC2AResponse());
         }
     }
 
