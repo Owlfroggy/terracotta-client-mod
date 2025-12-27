@@ -9,6 +9,7 @@ import owlfroggy.terracottaclient.api.message.ErrorResponse;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.ProvideTokenA2CRequest;
+import owlfroggy.terracottaclient.api.message.impl.ProvideTokenC2AResponse;
 import owlfroggy.terracottaclient.api.message.impl.RequestTokenA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.RequestTokenC2AResponse;
 
@@ -65,10 +66,6 @@ public class APIConnectionHandler {
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
             respond(r,new RequestTokenC2AResponse(tokenString));
             TCClient.MCI.player.sendMessage(Text.literal("authed "+appName).withColor(Colors.GREEN),false);
-            // TODO: save token somewhere (include its permissions, name, and expire date)
-        }
-        if (authenticationRequest instanceof ProvideTokenA2CRequest) {
-            // TODO: implement this :)
         }
     }
 
@@ -105,6 +102,17 @@ public class APIConnectionHandler {
                 r.getAppName() + "is tryin  to connect w/ permissions: " + r.getPermissions().toString()
                 + "     & appid = " + getId()
             ), false);
+        }
+        else if (request instanceof ProvideTokenA2CRequest r) {
+            APIToken token = TCClient.API_SERVER.getTokenObject(r.getToken());
+            if (token == null) {
+                respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
+            } else {
+                TCClient.MCI.player.sendMessage(Text.literal(
+                    "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
+                ),false);
+                respond(r, new ProvideTokenC2AResponse());
+            }
         }
     }
 

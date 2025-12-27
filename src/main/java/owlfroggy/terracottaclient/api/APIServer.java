@@ -75,6 +75,13 @@ public class APIServer extends WebSocketServer {
         }
     }
 
+    /**
+     * @return returns null if the token is invalid, returns an APIToken object otherwise
+     */
+    public APIToken getTokenObject(String tokenString) {
+        if (tokens.containsKey(tokenString)) return tokens.get(tokenString);
+        return null;
+    }
     public APIToken registerNewToken(String tokenString, String appName, HashSet<Permission> permissions) {
         APIToken token = new APIToken(tokenString,appName,permissions,Instant.now().getEpochSecond());
         tokens.put(tokenString,token);
