@@ -35,11 +35,14 @@ import java.util.function.Function;
 public class APIServer extends WebSocketServer {
     private static final Path TOKEN_FILE_PATH = TCClient.getConfigPath().resolve("tokens.json");
 
+    private boolean serverIsOpen = false;
     private final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
     private final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
     private final HashMap<String, APIToken> tokens = new HashMap<>();
     private int latestAppId = (int)(Math.random()*9999999);
     private int latestMessageId = 0;
+
+    public boolean isOpen() { return serverIsOpen; }
 
     public APIServer(InetSocketAddress address) {
         super(address);
@@ -247,5 +250,13 @@ public class APIServer extends WebSocketServer {
     @Override
     public void onStart() {
         TCClient.LOGGER.info("server started successfully");
+        serverIsOpen = true;
+    }
+
+    @Override
+    public void stop() throws InterruptedException {
+        super.stop();
+        TCClient.API_SERVER = null;
+        TCClient.LOGGER.info("server shut down successfully");
     }
 }

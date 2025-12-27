@@ -65,19 +65,14 @@ public class TCClient implements ClientModInitializer {
 
     public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
 
+    private static int ticksUntilTryAPIServer = 0;
+
     @Override
     public void onInitializeClient() {
         COMMAND_MANAGER = setupManager(new ChatCommandManager());
         DF_STATE = setupManager(new DFState());
         MOVEMENT_MANAGER = setupManager(new MovementManager());
         CODESPACE_MANAGER = setupManager(new CodespaceManager());
-
-        API_SERVER = new APIServer(new InetSocketAddress("localhost", 39893));
-        Thread apiServerThread = new Thread(() -> {
-            API_SERVER.run();
-        });
-        apiServerThread.setName("TCClient API");
-        apiServerThread.start();
 
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
@@ -232,8 +227,43 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // tick receivers
             for (TickEndReceiver receiver : tickEndReceivers) {
-                receiver.onTickEnd(client);
+                try {
+                    receiver.onTickEnd(client);
+                } catch (Exception e) {
+                    TCClient.LOGGER.error("Error while ticking " + receiver,e);
+                }
+            }
+
+            // start API server
+            ticksUntilTryAPIServer--;
+            if (TCClient.MCI.world != null && TCClient.MCI.player != null) {
+                if (API_SERVER == null && ticksUntilTryAPIServer <= 0) {
+                    ticksUntilTryAPIServer = 100;
+                    try {
+                        API_SERVER = new APIServer(new InetSocketAddress("localhost", 39893));
+                        Thread apiServerThread = new Thread(() -> {
+                            try {
+                                API_SERVER.run();
+                            } catch (Exception e) {
+                                TCClient.LOGGER.error("Failed to start API server",e);
+                                API_SERVER = null;
+                            }
+                        });
+                        apiServerThread.setName("TCClient API");
+                        apiServerThread.start();
+                    } catch (Exception e) {
+                        TCClient.LOGGER.error("Failed to start API server",e);
+                        API_SERVER = null;
+                    }
+                }
+            } else {
+                if (API_SERVER != null && API_SERVER.isOpen()) {
+                    try {
+                        API_SERVER.stop();
+                    } catch (Exception ignored) {}
+                }
             }
         });
         ClientChunkEvents.CHUNK_LOAD.register((clientWorld, worldChunk) -> {
