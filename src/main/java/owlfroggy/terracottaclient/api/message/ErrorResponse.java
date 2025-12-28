@@ -18,7 +18,7 @@ public class ErrorResponse extends Response {
     @Override
     protected void buildOn(JsonObject out, JsonObject data) {
         super.buildOn(out, data);
-        data.addProperty("error_code", code.name().toLowerCase());
+        data.addProperty("error_code", code.name());
         data.addProperty("error_message",errorMessage);
     }
 }

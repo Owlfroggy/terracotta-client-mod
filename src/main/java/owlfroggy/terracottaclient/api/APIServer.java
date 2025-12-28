@@ -63,7 +63,7 @@ public class APIServer extends WebSocketServer {
                             JsonArray permissionsJsonArray = tokenObject.get("permissions").getAsJsonArray();
                             HashSet<Permission> permissions = new HashSet<>();
                             for (JsonElement permissionElement : permissionsJsonArray) {
-                                Permission p = Permission.valueOf(permissionElement.getAsString().toUpperCase());
+                                Permission p = Permission.valueOf(permissionElement.getAsString());
                                 permissions.add(p);
                             }
 
@@ -114,9 +114,7 @@ public class APIServer extends WebSocketServer {
             o.addProperty("app_name",token.getAppName());
             o.addProperty("created_on_timestamp",token.getCreatedOnTimestamp());
             o.add("permissions",
-                new Gson().toJsonTree(token.getPermissions().stream().map(
-                    (Permission p) -> p.name().toLowerCase()
-                ).toArray())
+                new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray())
             );
             root.add(o);
         }
@@ -141,14 +139,14 @@ public class APIServer extends WebSocketServer {
         String type = json.get("type").getAsString();
 
         messageParser: switch (type) {
-            case "request" -> {
+            case "REQUEST" -> {
                 String method = json.get("method").getAsString();
 
                 // request types must be mapped here or else they won't parse
                 BiFunction<JsonObject, JsonObject, Request> parser = (switch (method) {
-                    case "request_token" -> RequestTokenA2CRequest::parse;
-                    case "provide_token" -> ProvideTokenC2AResponse::parse;
-                    case "initiate_code_edit" -> InitiateCodeEditA2CRequest::parse;
+                    case "REQUEST_TOKEN" -> RequestTokenA2CRequest::parse;
+                    case "PROVIDE_TOKEN" -> ProvideTokenA2CRequest::parse;
+                    case "INITIATE_CODE_EDIT" -> InitiateCodeEditA2CRequest::parse;
                     default -> throw new RuntimeException("invalid_request_method");
                 });
                 message = parser.apply(json, data);
@@ -245,6 +243,7 @@ public class APIServer extends WebSocketServer {
     @Override
     public void onError(WebSocket conn, Exception ex) {
         TCClient.LOGGER.error("an error occurred on connection " + conn.getRemoteSocketAddress()  + ":" + ex);
+        //stop();
     }
 
     @Override

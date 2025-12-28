@@ -14,8 +14,4 @@ public class ProvideTokenC2AResponse extends Response {
     protected void buildOn(JsonObject out, JsonObject data) {
         super.buildOn(out, data);
     }
-
-    public static Request parse(JsonObject message, JsonObject data) {
-        return new ProvideTokenA2CRequest(data.get("token").getAsString());
-    }
 }

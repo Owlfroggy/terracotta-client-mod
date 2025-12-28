@@ -24,6 +24,6 @@ public class Message {
 
     protected void buildOn(JsonObject out, JsonObject data) {
         out.addProperty("id",id);
-        out.addProperty("type",type.name().toLowerCase());
+        out.addProperty("type",type.name());
     }
 }
