@@ -4,5 +4,6 @@ public enum RequestMethod {
     UNKNOWN,
     REQUEST_TOKEN,
     PROVIDE_TOKEN,
-    INITIATE_CODE_EDIT
+    INITIATE_CODE_EDIT,
+    CHANGE_MODE,
 }

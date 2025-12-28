@@ -1,12 +1,17 @@
 package owlfroggy.terracottaclient.api;
 
 public enum APIErrorCode {
+    GENERIC_ERROR,
+
     TOKEN_ALREADY_PROVIDED,
     ALREADY_AUTHENTICATING,
     AUTHENTICATION_DENIED,
+
     INVALID_TOKEN,
+    INVALID_MODE,
 
     NOT_IN_DEV,
+    AT_SPAWN,
 
     EDIT_IN_PROGRESS,
     EDIT_FAILED,

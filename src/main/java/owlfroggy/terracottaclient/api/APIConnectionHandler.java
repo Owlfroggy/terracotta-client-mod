@@ -1,5 +1,6 @@
 package owlfroggy.terracottaclient.api;
 
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Colors;
 import org.java_websocket.WebSocket;
@@ -46,14 +47,14 @@ public class APIConnectionHandler {
         return t.toString();
     }
 
-    private void respond(Request request, Response response) {
+    private void sendInitialState() {
+        sendNotification(new ModeChangedC2ANotification(TCClient.DF_STATE.getMode()));
+    }
+
+    protected void respond(Request request, Response response) {
         response.setId(request.getId());
         String json = response.serialize();
         connection.send(json);
-    }
-
-    private void sendInitialState() {
-        sendNotification(new ModeChangedC2ANotification(TCClient.DF_STATE.getMode()));
     }
 
     public int getId() {
@@ -153,6 +154,24 @@ public class APIConnectionHandler {
             }
             // TODO: make this response wait until the code edit has actually finished
             respond(r, new InitiateCodeEditC2AResponse());
+        }
+        else if (request instanceof ChangeModeA2CRequest r) {
+            if (TCClient.DF_STATE.getMode() == DFState.Mode.SPAWN) {
+                respond(r, new ErrorResponse(
+                    APIErrorCode.AT_SPAWN,
+                    "Mode cannot be changed from spawn."
+                ));
+                return;
+            }
+            if (r.getMode() == DFState.Mode.SPAWN) {
+                respond(r, new ErrorResponse(
+                    APIErrorCode.INVALID_MODE,
+                    "THe CHANGE_MODE request cannot change to spawn."
+                ));
+                return;
+            }
+            TCClient.API_SERVER.setRequestAsPending(r,this);
+            TCClient.COMMAND_MANAGER.queueCommand("mode "+r.getMode());
         }
     }
 

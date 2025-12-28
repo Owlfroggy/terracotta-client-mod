@@ -3,6 +3,7 @@ package owlfroggy.terracottaclient.api;
 import com.google.gson.*;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.datafixers.types.Func;
 import com.mojang.datafixers.util.Function8;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.text.Text;
@@ -14,10 +15,7 @@ import owlfroggy.terracottaclient.api.message.Message;
 import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
-import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
-import owlfroggy.terracottaclient.api.message.impl.ProvideTokenA2CRequest;
-import owlfroggy.terracottaclient.api.message.impl.ProvideTokenC2AResponse;
-import owlfroggy.terracottaclient.api.message.impl.RequestTokenA2CRequest;
+import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 
@@ -30,6 +28,8 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -40,6 +40,7 @@ public class APIServer extends WebSocketServer {
     private final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
     private final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
     private final HashMap<String, APIToken> tokens = new HashMap<>();
+    private final Set<Request> pendingRequests = new HashSet();
     private static int latestAppId = (int)(Math.random()*9999999);
     private static int latestMessageId = 0;
     private static int latestNotificationId = 0;
@@ -106,6 +107,21 @@ public class APIServer extends WebSocketServer {
         }
     }
 
+    /**
+     * If there is no active API server, this function does nothing.
+     * Loops through all pending requests and runs resolver on them.
+     * @param resolver Return a response to respond to a request, return null to skip over it
+     */
+    public static void resolvePendingRequests(Function<Request, Response> resolver) {
+        if (TCClient.API_SERVER == null) return;
+        for (Request request : TCClient.API_SERVER.pendingRequests.stream().toList()) {
+            Response response = resolver.apply(request);
+            if (response == null) continue;
+            request.getHandler().respond(request,response);
+            TCClient.API_SERVER.pendingRequests.remove(request);
+        }
+    }
+
     private void writeTokensToFile() {
         JsonArray root = new JsonArray();
         for (APIToken token : tokens.values()) {
@@ -114,8 +130,7 @@ public class APIServer extends WebSocketServer {
             o.addProperty("app_name",token.getAppName());
             o.addProperty("created_on_timestamp",token.getCreatedOnTimestamp());
             o.add("permissions",
-            new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray())
-            );
+            new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray()));
             root.add(o);
         }
         String serialized = root.toString();
@@ -150,6 +165,11 @@ public class APIServer extends WebSocketServer {
         return token;
     }
 
+    public void setRequestAsPending(Request request, APIConnectionHandler handler) {
+        request.setHandler(handler);
+        pendingRequests.add(request);
+    }
+
     public Message parseMessage(String rawMessage) {
         JsonObject json = JsonParser.parseString(rawMessage).getAsJsonObject();
 
@@ -166,6 +186,7 @@ public class APIServer extends WebSocketServer {
                     case "REQUEST_TOKEN" -> RequestTokenA2CRequest::parse;
                     case "PROVIDE_TOKEN" -> ProvideTokenA2CRequest::parse;
                     case "INITIATE_CODE_EDIT" -> InitiateCodeEditA2CRequest::parse;
+                    case "CHANGE_MODE" -> ChangeModeA2CRequest::parse;
                     default -> throw new RuntimeException("invalid_request_method");
                 });
                 message = parser.apply(json, data);

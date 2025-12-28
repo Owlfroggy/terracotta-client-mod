@@ -17,6 +17,12 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import owlfroggy.terracottaclient.api.APIErrorCode;
+import owlfroggy.terracottaclient.api.APIServer;
+import owlfroggy.terracottaclient.api.message.ErrorResponse;
+import owlfroggy.terracottaclient.api.message.Request;
+import owlfroggy.terracottaclient.api.message.impl.ChangeModeA2CRequest;
+import owlfroggy.terracottaclient.api.message.impl.ChangeModeC2AResponse;
 import owlfroggy.terracottaclient.gameinterface.*;
 
 import java.util.*;
@@ -431,9 +437,18 @@ implements
                 case "playing" -> mode = Mode.PLAY;
                 case "spawn" -> mode = Mode.SPAWN;
             }
-            if (oldMode != mode) {
-                TCClient.fireModeChangeReceivers(mode);
-            }
+
+            APIServer.resolvePendingRequests((Request request) -> {
+                if (request instanceof ChangeModeA2CRequest r) {
+                    if (r.getMode() != mode)
+                        return new ErrorResponse(APIErrorCode.GENERIC_ERROR,"Something else changed the mode to %s instead of %s".formatted(mode,r.getMode()));
+
+                    return new ChangeModeC2AResponse();
+                }
+                return null;
+            });
+            if (oldMode != mode) TCClient.fireModeChangeReceivers(mode);
+
             modeRefreshQueued = false;
 
             int oldPlotId = plotId;
