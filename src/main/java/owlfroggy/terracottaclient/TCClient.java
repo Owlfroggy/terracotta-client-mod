@@ -25,6 +25,7 @@ import net.minecraft.world.chunk.WorldChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import owlfroggy.terracottaclient.api.APIServer;
+import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
@@ -307,6 +308,7 @@ public class TCClient implements ClientModInitializer {
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
         TCClient.MCI.player.sendMessage(Text.literal("mode change detected :D (" + newMode.toString() + ")"), false);
+        APIServer.broadcastNotification(new ModeChangedC2ANotification(newMode));
         for (ModeChangeReceiver receiver : modeChangeReceivers) {
             receiver.onModeChanged(newMode);
         }

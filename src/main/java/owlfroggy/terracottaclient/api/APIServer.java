@@ -11,6 +11,7 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.message.Message;
+import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
@@ -39,8 +40,10 @@ public class APIServer extends WebSocketServer {
     private final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
     private final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
     private final HashMap<String, APIToken> tokens = new HashMap<>();
-    private int latestAppId = (int)(Math.random()*9999999);
-    private int latestMessageId = 0;
+    private static int latestAppId = (int)(Math.random()*9999999);
+    private static int latestMessageId = 0;
+    private static int latestNotificationId = 0;
+
 
     public boolean isOpen() { return serverIsOpen; }
 
@@ -92,18 +95,15 @@ public class APIServer extends WebSocketServer {
         }
     }
 
-    /**
-     * @return returns null if the token is invalid, returns an APIToken object otherwise
-     */
-    public APIToken getTokenObject(String tokenString) {
-        if (tokens.containsKey(tokenString)) return tokens.get(tokenString);
-        return null;
-    }
-    public APIToken registerNewToken(String tokenString, String appName, HashSet<Permission> permissions) {
-        APIToken token = new APIToken(tokenString,appName,permissions,Instant.now().getEpochSecond());
-        tokens.put(tokenString,token);
-        writeTokensToFile();
-        return token;
+    /** If there is no active API server, this function does nothing */
+    public static void broadcastNotification(Notification notification) {
+        if (TCClient.API_SERVER == null) return;
+
+        notification.setId(TCClient.API_SERVER.getNewNotificationId());
+        String serialized = notification.serialize();
+        for (APIConnectionHandler handler : TCClient.API_SERVER.connectedAppsBySocket.values()) {
+            handler.sendNotification(serialized);
+        }
     }
 
     private void writeTokensToFile() {
@@ -114,7 +114,7 @@ public class APIServer extends WebSocketServer {
             o.addProperty("app_name",token.getAppName());
             o.addProperty("created_on_timestamp",token.getCreatedOnTimestamp());
             o.add("permissions",
-                new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray())
+            new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray())
             );
             root.add(o);
         }
@@ -129,6 +129,25 @@ public class APIServer extends WebSocketServer {
     public int getNewMessageId() {
         latestMessageId++;
         return latestMessageId;
+    }
+
+    public int getNewNotificationId() {
+        latestNotificationId++;
+        return latestNotificationId;
+    }
+
+    /**
+     * @return returns null if the token is invalid, returns an APIToken object otherwise
+     */
+    public APIToken getTokenObject(String tokenString) {
+        if (tokens.containsKey(tokenString)) return tokens.get(tokenString);
+        return null;
+    }
+    public APIToken registerNewToken(String tokenString, String appName, HashSet<Permission> permissions) {
+        APIToken token = new APIToken(tokenString,appName,permissions,Instant.now().getEpochSecond());
+        tokens.put(tokenString,token);
+        writeTokensToFile();
+        return token;
     }
 
     public Message parseMessage(String rawMessage) {
@@ -227,12 +246,10 @@ public class APIServer extends WebSocketServer {
         APIConnectionHandler handler = connectedAppsBySocket.get(conn);
         Message parsedMessage = parseMessage(message);
 
-
+        TCClient.LOGGER.info("received message from "	+ conn.getRemoteSocketAddress() + ": " + message);
         if (parsedMessage instanceof Request request) {
             handler.onRequest(request);
         }
-
-        TCClient.LOGGER.info("received message from "	+ conn.getRemoteSocketAddress() + ": " + message);
     }
 
 //    @Override

@@ -7,6 +7,7 @@ import org.java_websocket.handshake.ClientHandshake;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.message.ErrorResponse;
+import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.*;
@@ -28,7 +29,6 @@ public class APIConnectionHandler {
     private APIToken token = null;
     private Request authenticationRequest = null;
     private HashSet<Permission> permissions;
-
 
     APIConnectionHandler(WebSocket connection, ClientHandshake handshake, int id) {
         this.id = id;
@@ -52,6 +52,10 @@ public class APIConnectionHandler {
         connection.send(json);
     }
 
+    private void sendInitialState() {
+        sendNotification(new ModeChangedC2ANotification(TCClient.DF_STATE.getMode()));
+    }
+
     public int getId() {
         return id;
     }
@@ -72,6 +76,7 @@ public class APIConnectionHandler {
             respond(r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
             TCClient.MCI.player.sendMessage(Text.literal("authed "+appName).withColor(Colors.GREEN),false);
+            sendInitialState();
         }
     }
 
@@ -118,6 +123,7 @@ public class APIConnectionHandler {
                     "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
                 ),false);
                 respond(r, new ProvideTokenC2AResponse());
+                sendInitialState();
             }
         }
         else if (request instanceof InitiateCodeEditA2CRequest r) {
@@ -150,7 +156,13 @@ public class APIConnectionHandler {
         }
     }
 
-    public void sendNotification() {
 
+    public void sendNotification(String serializedNotification) {
+        TCClient.LOGGER.info("sending notif {}",serializedNotification);
+        connection.send(serializedNotification);
+    }
+    public void sendNotification(Notification notification) {
+        if (notification.getId() == -1) notification.setId(TCClient.API_SERVER.getNewNotificationId());
+        sendNotification(notification.serialize());
     }
 }
