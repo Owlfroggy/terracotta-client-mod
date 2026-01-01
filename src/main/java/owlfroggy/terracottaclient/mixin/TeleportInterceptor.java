@@ -13,7 +13,7 @@ public class TeleportInterceptor {
 	@Inject(method = "onPlayerPositionLook", at = @At("RETURN"))
 	private void init(PlayerPositionLookS2CPacket packet, CallbackInfo info) {
         if (TCClient.MCI.player != null) {
-            TCClient.fireTeleportReceivers(packet.change().position(),TCClient.MCI.player.getPos());
+            TCClient.fireTeleportReceivers(packet.change().position(),TCClient.MCI.player.getEntityPos());
         }
 	}
 }

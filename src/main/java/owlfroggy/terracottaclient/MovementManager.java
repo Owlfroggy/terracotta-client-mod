@@ -105,7 +105,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         currentMovementId = movementId;
         currentMovementState = MovementState.AVOID_CODE;
         destinationPos = TCClient.DF_STATE.toWorldSpace(plotSpaceDestination);
-        assumedPlayerPos = TCClient.MCI.player.getPos();
+        assumedPlayerPos = TCClient.MCI.player.getEntityPos();
     }
     public void setMovementDestination(Vec3d plotSpaceDestination) {
         setMovementDestination(plotSpaceDestination, null);

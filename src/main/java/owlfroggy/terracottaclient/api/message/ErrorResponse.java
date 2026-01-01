@@ -1,7 +1,6 @@
 package owlfroggy.terracottaclient.api.message;
 
 import com.google.gson.JsonObject;
-import net.minidev.json.JSONObject;
 import owlfroggy.terracottaclient.api.APIErrorCode;
 
 public class ErrorResponse extends Response {

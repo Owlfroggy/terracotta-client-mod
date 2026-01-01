@@ -407,7 +407,7 @@ implements
                         // stage new edits
                         if (stagedCodeEdits.isEmpty()) {
                             // find the closest edit to the player and make that the core edit
-                            Vec3d playerPos = TCClient.MCI.player.getPos();
+                            Vec3d playerPos = TCClient.MCI.player.getEntityPos();
                             CodeEdit coreEdit = null;
                             double minDistance = 999999999.0; //refactor this when world plots come out fr fr
                             for (CodeEdit edit : queuedCodeEdits) {
@@ -439,7 +439,7 @@ implements
                             Vec3d goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3d(0.5,2.2,0.5));
 
                             // if movement is complete, switch to editing mode
-                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getPos()) < 1) {
+                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getEntityPos()) < 1) {
                                 editState = GlobalEditState.EDITING;
                             } else {
                                 TCClient.MOVEMENT_MANAGER.setMovementDestination(
@@ -452,7 +452,7 @@ implements
 
                     case EDITING -> {
                         // if the player got moved away from the core edit, move them back
-                        Vec3d playerPos = client.player.getPos();
+                        Vec3d playerPos = client.player.getEntityPos();
                         Vec3d coreEditPos = Utils.toVec3d(TCClient.DF_STATE.toWorldSpace(currentBatchCoreEdit.plotSpacePos));
                         if (!playerPos.isWithinRangeOf(coreEditPos,4,4)) {
                             editState = GlobalEditState.MOVING;
@@ -610,7 +610,7 @@ implements
                     List<ChunkPos> rescans = queuedChunkRescans.stream().toList();
                     for (ChunkPos pos : rescans) {
                         Vec3d chunkStartPos = new Vec3d(pos.getStartX(),50,pos.getStartZ());
-                        Vec3d playerFlatPos = client.player.getPos();
+                        Vec3d playerFlatPos = client.player.getEntityPos();
                         double distance = chunkStartPos.distanceTo(playerFlatPos);
                         if (distance < smallestDistance) {
                             smallestDistance = distance;
