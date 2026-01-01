@@ -23,6 +23,7 @@ import owlfroggy.terracottaclient.api.message.ErrorResponse;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.impl.ChangeModeA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.ChangeModeC2AResponse;
+import owlfroggy.terracottaclient.api.message.impl.PlotChangedC2ANotification;
 import owlfroggy.terracottaclient.gameinterface.*;
 
 import java.util.*;
@@ -468,6 +469,7 @@ implements
 
             if (oldPlotId != plotId) {
                 doesHaveUndergroundCodespace = false;
+                APIServer.broadcastNotification(new PlotChangedC2ANotification(plotId,plotName));
                 TCClient.firePlotChangeReceivers(plotId,mode);
             }
         }
