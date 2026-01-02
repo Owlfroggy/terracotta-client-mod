@@ -28,6 +28,9 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.PlayerInput;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
+import owlfroggy.terracottaclient.api.APIServer;
+import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
+import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
 import owlfroggy.terracottaclient.codespacemanager.*;
 import owlfroggy.terracottaclient.gameinterface.ClientBlockUpdateReceiver;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
@@ -398,6 +401,14 @@ implements
 
                     client.player.playerScreenHandler.sendContentUpdates();
                     editState = GlobalEditState.IDLE;
+
+                    APIServer.resolvePendingRequests(r -> {
+                       if (r instanceof InitiateCodeEditA2CRequest) {
+                           return new InitiateCodeEditC2AResponse();
+                       }
+                       return null;
+                    });
+
                     break codeEditLogic;
                 }
 

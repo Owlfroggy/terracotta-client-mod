@@ -146,6 +146,7 @@ public class APIConnectionHandler {
 
             try {
                 TCClient.CODESPACE_MANAGER.editCode(r.getPlaceTemplates(), r.getBreakTemplates());
+                TCClient.API_SERVER.setRequestAsPending(r, this);
             } catch (Exception e) {
                 respond(r, new ErrorResponse(
                     APIErrorCode.EDIT_FAILED,
@@ -153,8 +154,6 @@ public class APIConnectionHandler {
                 ));
                 return;
             }
-            // TODO: make this response wait until the code edit has actually finished
-            respond(r, new InitiateCodeEditC2AResponse());
         }
         else if (request instanceof ChangeModeA2CRequest r) {
             if (TCClient.DF_STATE.getMode() == DFState.Mode.SPAWN) {
