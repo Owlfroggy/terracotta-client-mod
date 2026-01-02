@@ -39,7 +39,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         if (currentMovementState == MovementState.NOT_MOVING) {
             idleTicks++;
             if (idleTicks > 3 && movementSpeedIsModified && !holdFastSpeed) {
-                TCClient.COMMAND_MANAGER.queueCommand("flightspeed "+oldMovementSpeed);
+                TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed "+oldMovementSpeed, DFState.Mode.DEV);
                 movementSpeedIsModified = false;
             }
             return;
@@ -98,7 +98,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
 
         if (!movementSpeedIsModified && TCClient.DF_STATE.hasRank(DFState.Rank.NOBLE)) {
             oldMovementSpeed = (int)(TCClient.MCI.player.getAbilities().getFlySpeed()*100/.05);
-            TCClient.COMMAND_MANAGER.queueCommand("flightspeed 1000");
+            TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
             movementSpeedIsModified = true;
         }
 

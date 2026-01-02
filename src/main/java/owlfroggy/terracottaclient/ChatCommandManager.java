@@ -17,6 +17,11 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
     public void queueCommand(String command) {
         commandQueue.add(command);
     }
+    public void queueCommandIfInImode(String command, DFState.Mode mode) {
+        if (TCClient.DF_STATE.getMode() == mode) {
+            queueCommand(command);
+        }
+    }
 
     public void onTickEnd(MinecraftClient client) {
         if (TCClient.MCI.getNetworkHandler() == null) return;
@@ -29,6 +34,7 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
         if (command == null) return;
 
         TCClient.MCI.getNetworkHandler().sendChatCommand(command);
+        TCClient.LOGGER.info("Sending chat command: "+command);
         commandCooldown = COMMAND_COOLDOWN_TICKS;
     }
 }
