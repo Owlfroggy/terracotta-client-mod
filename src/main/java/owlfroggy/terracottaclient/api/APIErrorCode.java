@@ -2,6 +2,7 @@ package owlfroggy.terracottaclient.api;
 
 public enum APIErrorCode {
     GENERIC_ERROR,
+    MALFORMED_MESSAGE,
 
     TOKEN_ALREADY_PROVIDED,
     ALREADY_AUTHENTICATING,

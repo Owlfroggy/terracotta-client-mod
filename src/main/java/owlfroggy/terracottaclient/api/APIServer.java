@@ -11,10 +11,7 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import owlfroggy.terracottaclient.TCClient;
-import owlfroggy.terracottaclient.api.message.Message;
-import owlfroggy.terracottaclient.api.message.Notification;
-import owlfroggy.terracottaclient.api.message.Request;
-import owlfroggy.terracottaclient.api.message.Response;
+import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
@@ -170,12 +167,16 @@ public class APIServer extends WebSocketServer {
         pendingRequests.add(request);
     }
 
-    public Message parseMessage(String rawMessage) {
+    public Message parseMessage(String rawMessage) throws MessageParsingException {
         JsonObject json = JsonParser.parseString(rawMessage).getAsJsonObject();
 
         Message message;
         JsonObject data = json.get("data").getAsJsonObject();
         String type = json.get("type").getAsString();
+
+        int id = json.get("id").getAsInt();
+        Request reducedRequest = Request.parse(json, data);
+        reducedRequest.setId(id);
 
         messageParser: switch (type) {
             case "REQUEST" -> {
@@ -187,14 +188,17 @@ public class APIServer extends WebSocketServer {
                     case "PROVIDE_TOKEN" -> ProvideTokenA2CRequest::parse;
                     case "INITIATE_CODE_EDIT" -> InitiateCodeEditA2CRequest::parse;
                     case "CHANGE_MODE" -> ChangeModeA2CRequest::parse;
-                    default -> throw new RuntimeException("invalid_request_method");
+                    default -> throw new MessageParsingException("Invalid request method", reducedRequest);
                 });
-                message = parser.apply(json, data);
+                try {
+                    message = parser.apply(json, data);
+                } catch (Exception e) {
+                    throw new MessageParsingException(e,reducedRequest);
+                }
             }
-            default -> throw new RuntimeException("invalid_message_type");
+            default -> throw new MessageParsingException("Invalid message type",reducedRequest);
         }
 
-        int id = json.get("id").getAsInt();
         message.setId(id);
 
         //TODO: handle incorrectly formatted messages
@@ -265,11 +269,16 @@ public class APIServer extends WebSocketServer {
     @Override
     public void onMessage(WebSocket conn, String message) {
         APIConnectionHandler handler = connectedAppsBySocket.get(conn);
-        Message parsedMessage = parseMessage(message);
-
         TCClient.LOGGER.info("received message from "	+ conn.getRemoteSocketAddress() + ": " + message);
-        if (parsedMessage instanceof Request request) {
-            handler.onRequest(request);
+        try {
+            Message parsedMessage = parseMessage(message);
+            if (parsedMessage instanceof Request request) {
+                handler.onRequest(request);
+            }
+        } catch (Exception exception) {
+            if (exception instanceof MessageParsingException e) {
+                handler.respond(e.getReducedRequest(),new ErrorResponse(APIErrorCode.MALFORMED_MESSAGE,"Malformed request: "+e.getMessage()));
+            }
         }
     }
 
