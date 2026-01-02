@@ -381,6 +381,8 @@ implements
 
     @Override
     public void onTickEnd(MinecraftClient client) {
+        if (TCClient.DF_STATE.getPlotOrigin() == null) return;
+
         while (!queuedBlockRescans.isEmpty()) {
             BlockPos next = queuedBlockRescans.poll();
             if (next == null) {continue;}
