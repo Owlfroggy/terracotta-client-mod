@@ -312,7 +312,7 @@ implements
                     }
                 }
 
-                for (ChunkPos chunkPos : TCClient.loadedChunks.keySet().toArray(new ChunkPos[0])) {
+                for (ChunkPos chunkPos : TCClient.loadedChunks.keySet().stream().toList()) {
                     if (chunkPos == null) continue;
                     TCClient.CODESPACE_MANAGER.scanChunk(chunkPos);
                 }
