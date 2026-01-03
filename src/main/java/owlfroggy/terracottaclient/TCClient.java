@@ -6,6 +6,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -81,6 +82,15 @@ public class TCClient implements ClientModInitializer {
         MOVEMENT_MANAGER = setupManager(new MovementManager());
         CODESPACE_MANAGER = setupManager(new CodespaceManager());
         ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
+
+
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+           if (API_SERVER != null) {
+               try {
+                   API_SERVER.stop();
+               } catch (Exception ignored) {}
+           }
+        });
 
         ItemTooltipCallback.EVENT.register((item, context, type, lines) -> {
             for (TooltipRenderer tooltipRenderer : tooltipRenderers) {
