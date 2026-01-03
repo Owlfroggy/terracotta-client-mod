@@ -77,7 +77,7 @@ public class APIConnectionHandler {
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
             respond(r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
-            TCClient.MCI.player.sendMessage(Text.literal("authed "+appName).withColor(Colors.GREEN),false);
+            TCClient.safeMessage(Text.literal("authed "+appName).withColor(Colors.GREEN));
             sendInitialState();
         }
     }
@@ -111,19 +111,19 @@ public class APIConnectionHandler {
 
             authenticationRequest = r;
 
-            TCClient.MCI.player.sendMessage(Text.literal(
+            TCClient.safeMessage(Text.literal(
                 r.getAppName() + "is tryin  to connect w/ permissions: " + r.getPermissions().toString()
                 + "     & appid = " + getId()
-            ), false);
+            ));
         }
         else if (request instanceof ProvideTokenA2CRequest r) {
             APIToken token = TCClient.API_SERVER.getTokenObject(r.getToken());
             if (token == null) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
-                TCClient.MCI.player.sendMessage(Text.literal(
+                TCClient.safeMessage(Text.literal(
                     "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
-                ),false);
+                ));
                 respond(r, new ProvideTokenC2AResponse());
                 sendInitialState();
             }

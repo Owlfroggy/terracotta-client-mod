@@ -317,8 +317,8 @@ implements
                     TCClient.CODESPACE_MANAGER.scanChunk(chunkPos);
                 }
 
-                TCClient.MCI.player.sendMessage(Text.literal("Detected plot size:" + currentSizeGuess), false);
-                TCClient.MCI.player.sendMessage(Text.literal("Detected plot origin:" + plotOrigin), false);
+                TCClient.safeMessage(Text.literal("Detected plot size:" + currentSizeGuess));
+                TCClient.safeMessage(Text.literal("Detected plot origin:" + plotOrigin));
                 plotScanActive = false;
             } catch (Exception e) {
                 TCClient.LOGGER.error("Error while scanning plot",e);

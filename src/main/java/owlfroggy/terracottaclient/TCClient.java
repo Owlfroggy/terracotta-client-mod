@@ -10,10 +10,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
@@ -40,6 +43,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TCClient implements ClientModInitializer {
@@ -72,6 +76,7 @@ public class TCClient implements ClientModInitializer {
     private static final ArrayList<TooltipRenderer> tooltipRenderers = new ArrayList<>();
 
     public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
+    private static final List<Text> queuedChatMessages = new ArrayList<>();
 
     private static int ticksUntilTryAPIServer = 0;
 
@@ -83,6 +88,16 @@ public class TCClient implements ClientModInitializer {
         CODESPACE_MANAGER = setupManager(new CodespaceManager());
         ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
 
+        WorldRenderEvents.END_MAIN.register(worldRenderContext -> {
+            if (MCI.player == null) return;
+            // queued chat messages
+
+            Text[] messagesFrozen = queuedChatMessages.toArray(new Text[0]);
+            for (Text msg : messagesFrozen) {
+                MCI.player.sendMessage(msg,false);
+            }
+            queuedChatMessages.clear();
+        });
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
            if (API_SERVER != null) {
@@ -330,7 +345,7 @@ public class TCClient implements ClientModInitializer {
     }
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
-        TCClient.MCI.player.sendMessage(Text.literal("mode change detected :D (" + newMode.toString() + ")"), false);
+        safeMessage(Text.literal("mode change detected :D (" + newMode.toString() + ")"));
         APIServer.broadcastNotification(new ModeChangedC2ANotification(newMode));
         for (ModeChangeReceiver receiver : modeChangeReceivers) {
             receiver.onModeChanged(newMode);
@@ -390,8 +405,14 @@ public class TCClient implements ClientModInitializer {
         }
     }
 
-    private void acceptOrDenyConnection(int appId, boolean accept) {
-
+    /**
+     * Schedules a chat message to be sent at the end of the frame;
+     * ensures that the message is always sent from the render thread.
+     * Messages will be sent in the order they are queued.
+     * @param text The message to send.
+     */
+    public static void safeMessage(Text text) {
+        queuedChatMessages.add(text);
     }
 
     private <T extends Manager> T setupManager(T manager) {
