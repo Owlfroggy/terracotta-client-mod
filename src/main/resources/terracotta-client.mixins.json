@@ -20,6 +20,8 @@
   "client": [
     "ClientBlockUpdateInterceptor",
     "ClientCommandInterceptor",
+    "HotbarItemDecorationDrawer",
+    "ItemDecorationDrawer",
     "ScreenOpenInterceptor",
     "SequencedPacketAccessor"
   ]
