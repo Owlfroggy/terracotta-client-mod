@@ -89,7 +89,7 @@ implements
         "PROCESS", TemplateType.PROCESS
     ));
     private final ItemStack REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
-    private static final int TEMPLATE_VACUUM_SLOT = 9;
+    private static final int TEMPLATE_VACUUM_SLOT = 0;
 
     public final HashMap<Vec3i, CachedTemplate> templatesByLocation = new HashMap<>();
     public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
@@ -393,11 +393,8 @@ implements
             codeEditLogic: if (editState != GlobalEditState.IDLE) {
                 // break out of editor mode if all edits have been completed
                 if (queuedCodeEdits.isEmpty() && stagedCodeEdits.isEmpty()) {
-                    client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, oldOffhandItem));
-                    client.player.getInventory().setStack(PlayerInventory.OFF_HAND_SLOT,oldOffhandItem);
-
-                    client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem));
-                    client.player.getInventory().setStack(TEMPLATE_VACUUM_SLOT,oldFirstSlotItem);
+                    Utils.setItemInSlot(PlayerInventory.OFF_HAND_SLOT, oldOffhandItem);
+                    Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
 
                     TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
 
@@ -533,10 +530,9 @@ implements
 
                                 // clear a slot for the new template to go into
                                 // (so a billion dropped items dont spawn)
-                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(TEMPLATE_VACUUM_SLOT, new ItemStack(Items.AIR)));
-
+                                Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT,new ItemStack(Items.AIR),true);
                                 // make sure reach is extended
-                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, REACH_EXTENDER));
+                                Utils.setItemInSlot(PlayerInventory.OFF_HAND_SLOT,REACH_EXTENDER,true);
 
                                 // sneak
                                 PlayerInput sneakInput = new PlayerInput(
@@ -591,7 +587,7 @@ implements
                                 item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(root));
                                 Utils.applyReachToItem(item,"editor_reach_thingy");
 
-                                client.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(45, item));
+                                Utils.setItemInSlot(PlayerInventory.OFF_HAND_SLOT, item);
 
                                 // place item
                                 BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
