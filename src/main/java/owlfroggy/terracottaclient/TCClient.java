@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.BlockState;
@@ -67,6 +68,7 @@ public class TCClient implements ClientModInitializer {
     private static final ArrayList<ClientBlockUpdateReceiver> clientBlockUpdateReceivers = new ArrayList<>();
     private static final ArrayList<PlotChangeReceiver> plotChangeReceivers = new ArrayList<>();
     private static final ArrayList<ClientCommandReceiver> clientCommandReceivers = new ArrayList<>();
+    private static final ArrayList<TooltipRenderer> tooltipRenderers = new ArrayList<>();
 
     public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
 
@@ -79,6 +81,12 @@ public class TCClient implements ClientModInitializer {
         MOVEMENT_MANAGER = setupManager(new MovementManager());
         CODESPACE_MANAGER = setupManager(new CodespaceManager());
         ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
+
+        ItemTooltipCallback.EVENT.register((item, context, type, lines) -> {
+            for (TooltipRenderer tooltipRenderer : tooltipRenderers) {
+                tooltipRenderer.onItemTooltip(item, context, type, lines);
+            }
+        });
 
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
@@ -395,6 +403,8 @@ public class TCClient implements ClientModInitializer {
             plotChangeReceivers.add(plotChangeReceiver);
         if (manager instanceof ClientCommandReceiver clientCommandReceiver)
             clientCommandReceivers.add(clientCommandReceiver);
+        if (manager instanceof TooltipRenderer tooltipRenderer)
+            tooltipRenderers.add(tooltipRenderer);
 
         return manager;
     }
