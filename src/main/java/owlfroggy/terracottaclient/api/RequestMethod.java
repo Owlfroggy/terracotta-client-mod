@@ -6,4 +6,5 @@ public enum RequestMethod {
     PROVIDE_TOKEN,
     INITIATE_CODE_EDIT,
     CHANGE_MODE,
+    START_EDITING_ITEM,
 }

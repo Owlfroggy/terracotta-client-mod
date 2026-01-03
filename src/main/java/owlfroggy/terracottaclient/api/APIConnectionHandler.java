@@ -173,6 +173,10 @@ public class APIConnectionHandler {
             TCClient.API_SERVER.setRequestAsPending(r,this);
             TCClient.COMMAND_MANAGER.queueCommand("mode "+r.getMode());
         }
+        else if (request instanceof StartEditingItemA2CRequest r) {
+            TCClient.ITEM_LIBRARY_MANAGER.startEditingItem(getId(),r.getItemId(),r.getSnbt(),r.getItemDataVersion());
+            respond(r, new StartEditingItemC2AResponse());
+        }
     }
 
 

@@ -1,6 +1,5 @@
 package owlfroggy.terracottaclient;
 
-import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 
@@ -24,16 +23,12 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.chunk.WorldChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import owlfroggy.terracottaclient.api.APIErrorCode;
 import owlfroggy.terracottaclient.api.APIServer;
-import owlfroggy.terracottaclient.api.message.ErrorResponse;
-import owlfroggy.terracottaclient.api.message.Request;
-import owlfroggy.terracottaclient.api.message.impl.ChangeModeA2CRequest;
-import owlfroggy.terracottaclient.api.message.impl.ChangeModeC2AResponse;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
+import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -57,6 +52,7 @@ public class TCClient implements ClientModInitializer {
     public static DFState DF_STATE;
     public static MovementManager MOVEMENT_MANAGER;
     public static CodespaceManager CODESPACE_MANAGER;
+    public static ItemLibraryManager ITEM_LIBRARY_MANAGER;
     public static APIServer API_SERVER;
 
     private static final ArrayList<ChatMessageReceiver> chatMessageReceivers = new ArrayList<>();
@@ -79,6 +75,7 @@ public class TCClient implements ClientModInitializer {
         DF_STATE = setupManager(new DFState());
         MOVEMENT_MANAGER = setupManager(new MovementManager());
         CODESPACE_MANAGER = setupManager(new CodespaceManager());
+        ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
 
         // This code runs as soon as Minecraft is in a mod-load-ready state.
         // However, some things (like resources) may still be uninitialized.
