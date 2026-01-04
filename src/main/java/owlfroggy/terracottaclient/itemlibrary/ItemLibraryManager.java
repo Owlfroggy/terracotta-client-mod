@@ -114,7 +114,8 @@ public class ItemLibraryManager extends Manager implements TooltipRenderer {
         Window handle = TCClient.MCI.getWindow();
         boolean isShiftDown = InputUtil.isKeyPressed(handle, GLFW.GLFW_KEY_LEFT_SHIFT) || InputUtil.isKeyPressed(handle, GLFW.GLFW_KEY_RIGHT_SHIFT);
         if (isShiftDown) {
-            lines.add(Text.literal("(terracotta library item)").formatted(Formatting.DARK_GRAY));
+            lines.add(Text.literal("(terracotta library item,").formatted(Formatting.DARK_GRAY));
+            lines.add(Text.literal("edits are being synced live)").formatted(Formatting.DARK_GRAY));
             lines.add(
                 Text.literal("Library ID: ").formatted(Formatting.DARK_GRAY)
                 .append(Text.literal(libraryData.itemId.library).formatted(Formatting.GRAY))
