@@ -21,8 +21,10 @@
     "ClientBlockUpdateInterceptor",
     "ClientCommandInterceptor",
     "HotbarItemDecorationDrawer",
+    "InvSlotClickHandler",
     "ItemDecorationDrawer",
     "ScreenOpenInterceptor",
-    "SequencedPacketAccessor"
+    "SequencedPacketAccessor",
+    "SlotClickHandler"
   ]
 }
