@@ -7,6 +7,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.util.Identifier;
@@ -55,5 +56,12 @@ public class Utils {
 
         item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, root);
         return item;
+    }
+
+    public static String itemToSnbt(ItemStack item) {
+        return ItemStack.CODEC.encodeStart(
+            TCClient.MCI.player.getRegistryManager().getOps(NbtOps.INSTANCE),
+            item
+        ).getOrThrow().toString();
     }
 }

@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.datafixers.types.Func;
 import com.mojang.datafixers.util.Function8;
+import io.netty.util.internal.PromiseNotificationUtil;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.text.Text;
 import org.java_websocket.WebSocket;
@@ -104,6 +105,14 @@ public class APIServer extends WebSocketServer {
         }
     }
 
+    /** If there is no active API server, this function does nothing */
+    public static void sendNotification(int appId, Notification notification) {
+        if (TCClient.API_SERVER == null) return;
+
+        APIConnectionHandler handler = TCClient.API_SERVER.connectedAppsById.get(appId);
+        handler.sendNotification(notification);
+    }
+
     /**
      * If there is no active API server, this function does nothing.
      * Loops through all pending requests and runs resolver on them.
@@ -117,6 +126,11 @@ public class APIServer extends WebSocketServer {
             request.getHandler().respond(request,response);
             TCClient.API_SERVER.pendingRequests.remove(request);
         }
+    }
+
+    public static boolean hasConnectedAppId(int appId) {
+        if (TCClient.API_SERVER == null) return false;
+        return TCClient.API_SERVER.connectedAppsById.containsKey(appId);
     }
 
     private void writeTokensToFile() {

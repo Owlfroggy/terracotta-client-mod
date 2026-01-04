@@ -2,7 +2,9 @@ package owlfroggy.terracottaclient.itemlibrary;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.DataResult;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.Window;
@@ -15,7 +17,6 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -25,15 +26,35 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import owlfroggy.terracottaclient.Manager;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.Utils;
+import owlfroggy.terracottaclient.api.APIServer;
+import owlfroggy.terracottaclient.api.message.impl.ItemChangedC2ANotification;
+import owlfroggy.terracottaclient.api.message.impl.StopEditingItemC2ANotification;
+import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 import owlfroggy.terracottaclient.gameinterface.TooltipRenderer;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
 
-public class ItemLibraryManager extends Manager implements TooltipRenderer {
+public class ItemLibraryManager extends Manager
+implements
+    TooltipRenderer,
+    TickEndReceiver
+{
     public record ItemId(String workspace, String library, String item) {}
-    public record LibraryItemEditData(int appId, int editId, ItemId itemId) {}
+    public class LibraryItemEditData {
+        public final int appId;
+        public final int editId;
+        public final ItemId itemId;
+        public String lastSnbt;
+
+        // Standard Constructor
+        public LibraryItemEditData(int appId, int editId, ItemId itemId, String lastSnbt) {
+            this.appId = appId;
+            this.editId = editId;
+            this.itemId = itemId;
+            this.lastSnbt = lastSnbt;
+        }
+    }
 
     private static final String CUSTOM_DATA_KEY = Identifier.of(TCClient.MOD_ID,"library_data").toString();
 
@@ -88,11 +109,8 @@ public class ItemLibraryManager extends Manager implements TooltipRenderer {
             throw new InvalidNBTException(e.getMessage());
         }
 
-        // create edit data
         lastEditId += 1+(int)(Math.random()*100);
         int editId = lastEditId;
-        LibraryItemEditData editData = new LibraryItemEditData(appId,editId,itemId);
-        activeEdits.put(editId, editData);
 
         // add library item marker data
         NbtCompound terracottaDict = new NbtCompound();
@@ -104,6 +122,9 @@ public class ItemLibraryManager extends Manager implements TooltipRenderer {
         item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(customData));
 
         Utils.setItemInSlot(slot, item);
+
+        LibraryItemEditData editData = new LibraryItemEditData(appId,editId,itemId,Utils.itemToSnbt(item));
+        activeEdits.put(editId, editData);
     }
 
     @Override
@@ -124,6 +145,53 @@ public class ItemLibraryManager extends Manager implements TooltipRenderer {
                 Text.literal("Item ID: ").formatted(Formatting.DARK_GRAY)
                 .append(Text.literal(libraryData.itemId.item).formatted(Formatting.GRAY))
             );
+        }
+    }
+
+    private final Set<Integer> seenEdits = new HashSet<>();
+
+    @Override
+    public void onTickEnd(MinecraftClient client) {
+        if (TCClient.MCI.player == null) return;
+
+        seenEdits.clear();
+
+        for (int slot = -1; slot <= 40; slot++) {
+            ItemStack item;
+            if (slot == -1)
+                item = TCClient.MCI.player.currentScreenHandler.getCursorStack();
+            else
+                item = TCClient.MCI.player.getInventory().getStack(slot);
+
+            LibraryItemEditData editData = getLibraryData(item);
+            if (editData == null) continue;
+
+            seenEdits.add(editData.editId);
+
+            String oldSnbt = editData.lastSnbt;
+            String newSnbt = Utils.itemToSnbt(item);
+
+            if (!oldSnbt.equals(newSnbt)) {
+                APIServer.sendNotification(editData.appId, new ItemChangedC2ANotification(
+                    editData.itemId,
+                    newSnbt
+                ));
+                editData.lastSnbt = newSnbt;
+            }
+        }
+
+        // stop all edits whose items are no longer in the inventory
+        for (int editId : activeEdits.keySet().stream().toList()) {
+            LibraryItemEditData editData = activeEdits.get(editId);
+            if (!APIServer.hasConnectedAppId(editData.appId)) {
+                activeEdits.remove(editId);
+            }
+            if (!seenEdits.contains(editId)) {
+                APIServer.sendNotification(editData.appId, new StopEditingItemC2ANotification(
+                    editData.itemId
+                ));
+                activeEdits.remove(editId);
+            }
         }
     }
 
