@@ -130,11 +130,34 @@ implements
     }
 
     public void stopEditingItem(LibraryItemEditData editData) {
+        int slot = -2;
+        if (TCClient.MCI.player != null) {
+            for (int s = -1; s <= 40; s++) {
+                ItemStack thisItem;
+                if (s == -1)
+                    thisItem = TCClient.MCI.player.currentScreenHandler.getCursorStack();
+                else
+                    thisItem = TCClient.MCI.player.getInventory().getStack(s);
+
+                LibraryItemEditData thisEditData = getLibraryData(thisItem);
+                if (thisEditData == null) continue;
+                if (thisEditData.editId == editData.editId) {
+                    slot = s;
+                    break;
+                }
+            }
+        }
+
         if (APIServer.hasConnectedAppId(editData.appId)) {
             APIServer.sendNotification(editData.appId, new StopEditingItemC2ANotification(editData.itemId));
         }
         activeEdits.remove(editData.editId);
         activeEditsByItemId.remove(editData.itemId);
+        if (slot == -1) {
+            TCClient.MCI.player.currentScreenHandler.setCursorStack(ItemStack.EMPTY);
+        } else if (slot >= 0) {
+            TCClient.MCI.player.getInventory().setStack(slot,ItemStack.EMPTY);
+        }
     }
     public void stopEditingItem(ItemId itemId) {
         stopEditingItem(activeEditsByItemId.get(itemId));
