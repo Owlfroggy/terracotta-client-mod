@@ -3,16 +3,19 @@ package owlfroggy.terracottaclient;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
 import java.util.List;
 
@@ -58,10 +61,23 @@ public class Utils {
         return item;
     }
 
+    /**
+     * Omits terracotta metadata from the outputted snbt
+     */
     public static String itemToSnbt(ItemStack item) {
+        ItemStack clone = item.copy();
+
+        NbtComponent customData = clone.getOrDefault(DataComponentTypes.CUSTOM_DATA, null);
+        if (customData != null) {
+            NbtCompound nbt = customData.copyNbt();
+            if (nbt.contains(ItemLibraryManager.CUSTOM_DATA_KEY))
+                nbt.remove(ItemLibraryManager.CUSTOM_DATA_KEY);
+            clone.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
+        }
+
         return ItemStack.CODEC.encodeStart(
             TCClient.MCI.player.getRegistryManager().getOps(NbtOps.INSTANCE),
-            item
+            clone
         ).getOrThrow().toString();
     }
 }

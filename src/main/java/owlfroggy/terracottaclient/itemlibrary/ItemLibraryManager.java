@@ -56,7 +56,7 @@ implements
         }
     }
 
-    private static final String CUSTOM_DATA_KEY = Identifier.of(TCClient.MOD_ID,"library_data").toString();
+    public static final String CUSTOM_DATA_KEY = Identifier.of(TCClient.MOD_ID,"library_data").toString();
 
     /** key: edit id */
     private int lastEditId = 0;
