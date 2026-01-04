@@ -203,6 +203,7 @@ public class APIServer extends WebSocketServer {
                     case "INITIATE_CODE_EDIT" -> InitiateCodeEditA2CRequest::parse;
                     case "CHANGE_MODE" -> ChangeModeA2CRequest::parse;
                     case "START_EDITING_ITEM" -> StartEditingItemA2CRequest::parse;
+                    case "STOP_EDITING_ITEM" -> StopEditingItemA2CRequest::parse;
                     default -> throw new MessageParsingException("Invalid request method", reducedRequest);
                 });
                 try {

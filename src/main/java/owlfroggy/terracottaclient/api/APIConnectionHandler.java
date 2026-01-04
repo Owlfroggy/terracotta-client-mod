@@ -12,6 +12,7 @@ import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.*;
+import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
 import java.util.HashSet;
 
@@ -176,6 +177,9 @@ public class APIConnectionHandler {
         else if (request instanceof StartEditingItemA2CRequest r) {
             TCClient.ITEM_LIBRARY_MANAGER.startEditingItem(getId(),r.getItemId(),r.getSnbt(),r.getItemDataVersion());
             respond(r, new StartEditingItemC2AResponse());
+        }
+        else if (request instanceof StopEditingItemA2CRequest r) {
+            TCClient.ITEM_LIBRARY_MANAGER.stopEditingItem(r.getItemId());
         }
     }
 

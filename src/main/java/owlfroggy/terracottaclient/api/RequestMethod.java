@@ -7,4 +7,5 @@ public enum RequestMethod {
     INITIATE_CODE_EDIT,
     CHANGE_MODE,
     START_EDITING_ITEM,
+    STOP_EDITING_ITEM,
 }

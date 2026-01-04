@@ -61,6 +61,7 @@ implements
     /** key: edit id */
     private int lastEditId = 0;
     private HashMap<java.lang.Integer, LibraryItemEditData> activeEdits = new HashMap<>();
+    private HashMap<ItemId, LibraryItemEditData> activeEditsByItemId = new HashMap<>();
 
     @Nullable
     public ItemLibraryManager.LibraryItemEditData getLibraryData(ItemStack item) {
@@ -125,6 +126,18 @@ implements
 
         LibraryItemEditData editData = new LibraryItemEditData(appId,editId,itemId,Utils.itemToSnbt(item));
         activeEdits.put(editId, editData);
+        activeEditsByItemId.put(itemId, editData);
+    }
+
+    public void stopEditingItem(LibraryItemEditData editData) {
+        if (APIServer.hasConnectedAppId(editData.appId)) {
+            APIServer.sendNotification(editData.appId, new StopEditingItemC2ANotification(editData.itemId));
+        }
+        activeEdits.remove(editData.editId);
+        activeEditsByItemId.remove(editData.itemId);
+    }
+    public void stopEditingItem(ItemId itemId) {
+        stopEditingItem(activeEditsByItemId.get(itemId));
     }
 
     @Override
@@ -148,7 +161,7 @@ implements
         }
     }
 
-    private final Set<Integer> seenEdits = new HashSet<>();
+    private final Set<LibraryItemEditData> seenEdits = new HashSet<>();
 
     @Override
     public void onTickEnd(MinecraftClient client) {
@@ -166,7 +179,7 @@ implements
             LibraryItemEditData editData = getLibraryData(item);
             if (editData == null) continue;
 
-            seenEdits.add(editData.editId);
+            seenEdits.add(editData);
 
             String oldSnbt = editData.lastSnbt;
             String newSnbt = Utils.itemToSnbt(item);
@@ -181,16 +194,12 @@ implements
         }
 
         // stop all edits whose items are no longer in the inventory
-        for (int editId : activeEdits.keySet().stream().toList()) {
-            LibraryItemEditData editData = activeEdits.get(editId);
-            if (!APIServer.hasConnectedAppId(editData.appId)) {
-                activeEdits.remove(editId);
-            }
-            if (!seenEdits.contains(editId)) {
-                APIServer.sendNotification(editData.appId, new StopEditingItemC2ANotification(
-                    editData.itemId
-                ));
-                activeEdits.remove(editId);
+        for (LibraryItemEditData editData : activeEdits.values().stream().toList()) {
+            if (
+                !APIServer.hasConnectedAppId(editData.appId)
+                || !seenEdits.contains(editData)
+            ) {
+                stopEditingItem(editData);
             }
         }
     }

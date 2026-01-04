@@ -8,6 +8,8 @@ import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 public class StopEditingItemC2ANotification extends Notification{
     private ItemLibraryManager.ItemId itemId;
 
+    public ItemLibraryManager.ItemId getItemId() { return itemId; }
+
     public StopEditingItemC2ANotification(ItemLibraryManager.ItemId itemId) {
         super(NotificationMethod.STOP_EDITING_ITEM);
         this.itemId = itemId;

@@ -46,7 +46,6 @@ public class SlotClickCanceler {
         }
         else if (actionType == SlotActionType.QUICK_MOVE) {
             if (focusedSlot == null || slot == null) return;
-            TCClient.LOGGER.info(TCClient.MCI.currentScreen.getClass().toString());
             if (TCClient.MCI.currentScreen instanceof InventoryScreen || TCClient.MCI.currentScreen instanceof CreativeInventoryScreen)
                 return;
             cancelIfLibItem(ci, focusedSlot.getStack());
