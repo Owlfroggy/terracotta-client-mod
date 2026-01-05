@@ -87,28 +87,11 @@ implements
 
     public void startEditingItem(int appId, ItemId itemId, String itemData, int itemDataVersion) {
         //TODO: handle item version not matching client version
-        //TODO: handle inventory being full
         int slot = TCClient.MCI.player.getInventory().getEmptySlot();
-        if (slot == -1) {
-            throw new NoSpaceException("Not enough inventory space to start editing item");
-        }
+        if (slot == -1)
+            throw new NoSpaceException("Not enough inventory space to start editing item.");
 
-        // parse nbt
-        NbtCompound nbt;
-        try {
-            nbt = StringNbtReader.readCompound(itemData);
-        } catch (CommandSyntaxException e) {
-            throw new InvalidNBTException(e.getMessage());
-        }
-
-        // convert nbt to item
-        DataResult<ItemStack> result = ItemStack.CODEC.parse(TCClient.MCI.world.getRegistryManager().getOps(NbtOps.INSTANCE), nbt);
-        ItemStack item;
-        try {
-            item = result.getOrThrow();
-        } catch (Exception e) {
-            throw new InvalidNBTException(e.getMessage());
-        }
+        ItemStack item = Utils.snbtToItem(itemData);
 
         lastEditId += 1+(int)(Math.random()*100);
         int editId = lastEditId;

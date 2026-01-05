@@ -1,5 +1,6 @@
 package owlfroggy.terracottaclient.api;
 
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Colors;
@@ -7,12 +8,14 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.TCClient;
+import owlfroggy.terracottaclient.Utils;
 import owlfroggy.terracottaclient.api.message.ErrorResponse;
 import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
+import owlfroggy.terracottaclient.itemlibrary.NoSpaceException;
 
 import java.util.HashSet;
 
@@ -180,6 +183,19 @@ public class APIConnectionHandler {
         }
         else if (request instanceof StopEditingItemA2CRequest r) {
             TCClient.ITEM_LIBRARY_MANAGER.stopEditingItem(r.getItemId());
+        }
+        else if (request instanceof GiveItemA2CRequest r) {
+            int slot = TCClient.MCI.player.getInventory().getEmptySlot();
+            if (slot == -1) {
+                respond(r, new ErrorResponse(APIErrorCode.NO_SPACE, "Not inventory enough space to give item."));
+                return;
+            }
+
+            try {
+                TCClient.MCI.player.getInventory().setStack(slot, Utils.snbtToItem(r.getSnbt()));
+            } catch (Exception e) {
+                respond(r, new ErrorResponse(APIErrorCode.INVALID_ITEM_DATA, "Invalid item data: "+e));
+            }
         }
     }
 

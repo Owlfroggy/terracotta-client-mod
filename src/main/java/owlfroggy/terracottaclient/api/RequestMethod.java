@@ -8,4 +8,5 @@ public enum RequestMethod {
     CHANGE_MODE,
     START_EDITING_ITEM,
     STOP_EDITING_ITEM,
+    GIVE_ITEM,
 }

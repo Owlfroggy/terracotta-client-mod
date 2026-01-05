@@ -16,4 +16,7 @@ public enum APIErrorCode {
 
     EDIT_IN_PROGRESS,
     EDIT_FAILED,
+
+    NO_SPACE,
+    INVALID_ITEM_DATA
 }

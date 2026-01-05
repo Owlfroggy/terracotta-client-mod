@@ -1,5 +1,7 @@
 package owlfroggy.terracottaclient;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.serialization.DataResult;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.component.type.AttributeModifiersComponent;
@@ -10,11 +12,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import owlfroggy.terracottaclient.itemlibrary.InvalidNBTException;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
 import java.util.List;
@@ -79,5 +83,23 @@ public class Utils {
             TCClient.MCI.player.getRegistryManager().getOps(NbtOps.INSTANCE),
             clone
         ).getOrThrow().toString();
+    }
+
+    public static ItemStack snbtToItem(String snbt) {
+        // parse nbt
+        NbtCompound nbt;
+        try {
+            nbt = StringNbtReader.readCompound(snbt);
+        } catch (CommandSyntaxException e) {
+            throw new InvalidNBTException(e.getMessage());
+        }
+
+        // convert nbt to item
+        DataResult<ItemStack> result = ItemStack.CODEC.parse(TCClient.MCI.player.getRegistryManager().getOps(NbtOps.INSTANCE), nbt);
+        try {
+            return result.getOrThrow();
+        } catch (Exception e) {
+            throw new InvalidNBTException(e.getMessage());
+        }
     }
 }
