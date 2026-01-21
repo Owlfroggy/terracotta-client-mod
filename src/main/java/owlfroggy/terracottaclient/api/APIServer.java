@@ -16,6 +16,7 @@ import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
+import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -321,6 +322,7 @@ public class APIServer extends WebSocketServer {
 
     @Override
     public void stop() throws InterruptedException {
+        TCClient.ITEM_LIBRARY_MANAGER.stopEditingAllItems();
         super.stop();
         TCClient.API_SERVER = null;
         TCClient.LOGGER.info("server shut down successfully");

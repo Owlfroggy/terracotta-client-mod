@@ -146,6 +146,12 @@ implements
         stopEditingItem(activeEditsByItemId.get(itemId));
     }
 
+    public void stopEditingAllItems() {
+        for (LibraryItemEditData editData : activeEditsByItemId.values().stream().toList()) {
+            stopEditingItem(editData);
+        }
+    }
+
     @Override
     public void onItemTooltip(ItemStack item, Item.TooltipContext context, TooltipType type, List<Text> lines) {
         LibraryItemEditData libraryData = getLibraryData(item);
