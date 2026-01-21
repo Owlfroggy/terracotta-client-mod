@@ -1,5 +1,6 @@
 package owlfroggy.terracottaclient.api;
 
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
@@ -17,6 +18,7 @@ import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemlibrary.NoSpaceException;
 
+import java.util.HashMap;
 import java.util.HashSet;
 
 public class APIConnectionHandler {
@@ -196,6 +198,20 @@ public class APIConnectionHandler {
             } catch (Exception e) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_ITEM_DATA, "Invalid item data: "+e));
             }
+        }
+        else if (request instanceof GetInventoryA2CRequest r) {
+            PlayerInventory inv = TCClient.MCI.player.getInventory();
+            HashMap<Integer, GetInventoryC2AResponse.ItemEntry> itemEntries = new HashMap<>();
+            for (int slot = 0; slot < inv.size(); slot++) {
+                ItemStack item = inv.getStack(slot);
+                if (item.isEmpty()) continue;
+                if (TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item) != null) continue;
+                itemEntries.put(slot, new GetInventoryC2AResponse.ItemEntry(
+                    item.getName().getString(),
+                    Utils.itemToSnbt(item)
+                ));
+            }
+            respond(r, new GetInventoryC2AResponse(itemEntries));
         }
     }
 

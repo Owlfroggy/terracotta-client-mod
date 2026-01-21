@@ -205,6 +205,7 @@ public class APIServer extends WebSocketServer {
                     case "START_EDITING_ITEM" -> StartEditingItemA2CRequest::parse;
                     case "STOP_EDITING_ITEM" -> StopEditingItemA2CRequest::parse;
                     case "GIVE_ITEM" -> GiveItemA2CRequest::parse;
+                    case "GET_INVENTORY" -> GetInventoryA2CRequest::parse;
                     default -> throw new MessageParsingException("Invalid request method", reducedRequest);
                 });
                 try {
@@ -295,6 +296,8 @@ public class APIServer extends WebSocketServer {
         } catch (Exception exception) {
             if (exception instanceof MessageParsingException e) {
                 handler.respond(e.getReducedRequest(),new ErrorResponse(APIErrorCode.MALFORMED_MESSAGE,"Malformed request: "+e.getMessage()));
+            } else {
+                TCClient.LOGGER.error("Error while handling request",exception);
             }
         }
     }

@@ -9,4 +9,5 @@ public enum RequestMethod {
     START_EDITING_ITEM,
     STOP_EDITING_ITEM,
     GIVE_ITEM,
+    GET_INVENTORY,
 }
