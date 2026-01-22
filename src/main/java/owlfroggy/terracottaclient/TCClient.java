@@ -252,6 +252,9 @@ public class TCClient implements ClientModInitializer {
                 for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.ENTITY_EVENT).keySet()) {
                     numEvents += CODESPACE_MANAGER.templatesByName.get(TemplateType.ENTITY_EVENT).get(name).size();
                 }
+                for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.GAME_EVENT).keySet()) {
+                    numEvents += CODESPACE_MANAGER.templatesByName.get(TemplateType.GAME_EVENT).get(name).size();
+                }
 
                 int numProcesses = 0;
                 for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.PROCESS).keySet()) {

@@ -85,6 +85,7 @@ implements
     private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
         "PLAYER EVENT", TemplateType.PLAYER_EVENT,
         "ENTITY EVENT", TemplateType.ENTITY_EVENT,
+        "GAME EVENT", TemplateType.GAME_EVENT,
         "FUNCTION", TemplateType.FUNCTION,
         "PROCESS", TemplateType.PROCESS
     ));
@@ -95,6 +96,7 @@ implements
     public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
         TemplateType.PLAYER_EVENT, new HashMap<>(),
         TemplateType.ENTITY_EVENT, new HashMap<>(),
+        TemplateType.GAME_EVENT, new HashMap<>(),
         TemplateType.FUNCTION, new HashMap<>(),
         TemplateType.PROCESS, new HashMap<>()
     ));

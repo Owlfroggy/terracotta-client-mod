@@ -37,6 +37,7 @@ public class TemplateDataUtils {
             case "process" -> type = TemplateType.PROCESS;
             case "event" -> type = TemplateType.PLAYER_EVENT;
             case "entity_event" -> type = TemplateType.ENTITY_EVENT;
+            case "game_event" -> type = TemplateType.GAME_EVENT;
         }
 
         if (type == null)
