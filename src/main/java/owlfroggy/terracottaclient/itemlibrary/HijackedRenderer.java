@@ -164,8 +164,8 @@ public class HijackedRenderer implements AutoCloseable {
 			mappableRingBuffer.rotate();
 		}
 
-		this.draws.clear();
-		this.preparations.clear();
+//		this.draws.clear();
+//		this.preparations.clear();
 		this.state.clear();
 		this.blurLayer = Integer.MAX_VALUE;
 		this.clearOversizedItems();

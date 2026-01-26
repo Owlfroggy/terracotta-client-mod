@@ -172,21 +172,30 @@ public class TCClient implements ClientModInitializer {
             );
         });
 
+
+
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
                 MinecraftClient client = TCClient.MCI;
                 GuiRenderState guiState = new GuiRenderState();
 
-                int renderScale = 4;
+                int renderScale = 8;
 
                 OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
+                int wsf = client.getWindow().getScaleFactor();
+                int wfx = client.getWindow().getFramebufferWidth();
+                int wfy = client.getWindow().getFramebufferHeight();
+                client.getWindow().setScaleFactor(renderScale);
+                client.getWindow().setFramebufferHeight(16 * renderScale);
+                client.getWindow().setFramebufferWidth(16 * renderScale);
                 Framebuffer framebuffer = new SimpleFramebuffer(
                     "itemRender",
-                    client.getWindow().getFramebufferWidth() / client.getWindow().getScaleFactor() * renderScale,
-                    client.getWindow().getFramebufferHeight() / client.getWindow().getScaleFactor() * renderScale,
+                    16 * renderScale,
+                    16 * renderScale,
                     true
                 );
-                VertexConsumerProvider.Immediate vertexConsumerProvider = VertexConsumerProvider.immediate(new BufferAllocator(25600));
+
+                VertexConsumerProvider.Immediate vertexConsumerProvider = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
                 HijackedRenderer renderer = new HijackedRenderer(
                     framebuffer,
                     guiState,
@@ -198,7 +207,6 @@ public class TCClient implements ClientModInitializer {
                         vertexConsumerProvider,
                         TCClient.MCI.getAtlasManager(),
                         new OutlineVertexConsumerProvider(),
-//                        VertexConsumerProvider.immediate(new BufferAllocator(256)),
                         vertexConsumerProvider,
                         TCClient.MCI.textRenderer
                     ),
@@ -210,10 +218,16 @@ public class TCClient implements ClientModInitializer {
                 int mx = (int)client.mouse.getScaledX(client.getWindow());
                 int my = (int)client.mouse.getScaledY(client.getWindow());
                 DrawContext drawContext = new DrawContext(client, guiState, mx, my);
-                drawContext.drawItemWithoutEntity(new ItemStack(Items.EMERALD),0,0);
+                drawContext.drawItemWithoutEntity(TCClient.MCI.player.getMainHandStack(),0,0);
 
                 renderer.prepare();
                 renderer.renderPreparedDraws(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));
+
+                vertexConsumerProvider.draw();
+                client.getWindow().setScaleFactor(wsf);
+                client.getWindow().setFramebufferWidth(wfx);
+                client.getWindow().setFramebufferHeight(wfy);
+                TCClient.MCI.onResolutionChanged();
 
                 ScreenshotRecorder.saveScreenshot(new File("/tmp/exported"),framebuffer, Consumers.nop());
 
