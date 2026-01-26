@@ -177,10 +177,16 @@ public class TCClient implements ClientModInitializer {
                 MinecraftClient client = TCClient.MCI;
                 GuiRenderState guiState = new GuiRenderState();
 
-                OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
+                int renderScale = 4;
 
-                Framebuffer framebuffer = new SimpleFramebuffer("itemRender",client.getWindow().getFramebufferWidth(),client.getWindow().getFramebufferHeight(),true);
-                VertexConsumerProvider.Immediate vertexConsumerProvider = VertexConsumerProvider.immediate(new BufferAllocator(256));
+                OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
+                Framebuffer framebuffer = new SimpleFramebuffer(
+                    "itemRender",
+                    client.getWindow().getFramebufferWidth() / client.getWindow().getScaleFactor() * renderScale,
+                    client.getWindow().getFramebufferHeight() / client.getWindow().getScaleFactor() * renderScale,
+                    true
+                );
+                VertexConsumerProvider.Immediate vertexConsumerProvider = VertexConsumerProvider.immediate(new BufferAllocator(25600));
                 HijackedRenderer renderer = new HijackedRenderer(
                     framebuffer,
                     guiState,
@@ -192,7 +198,8 @@ public class TCClient implements ClientModInitializer {
                         vertexConsumerProvider,
                         TCClient.MCI.getAtlasManager(),
                         new OutlineVertexConsumerProvider(),
-                        VertexConsumerProvider.immediate(new BufferAllocator(256)),
+//                        VertexConsumerProvider.immediate(new BufferAllocator(256)),
+                        vertexConsumerProvider,
                         TCClient.MCI.textRenderer
                     ),
                     new ArrayList<>()
@@ -203,7 +210,7 @@ public class TCClient implements ClientModInitializer {
                 int mx = (int)client.mouse.getScaledX(client.getWindow());
                 int my = (int)client.mouse.getScaledY(client.getWindow());
                 DrawContext drawContext = new DrawContext(client, guiState, mx, my);
-                drawContext.drawItemWithoutEntity(new ItemStack(Items.EMERALD),50,50);
+                drawContext.drawItemWithoutEntity(new ItemStack(Items.EMERALD),0,0);
 
                 renderer.prepare();
                 renderer.renderPreparedDraws(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));
