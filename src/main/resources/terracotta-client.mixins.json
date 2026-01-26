@@ -20,6 +20,8 @@
   "client": [
     "ClientBlockUpdateInterceptor",
     "ClientCommandInterceptor",
+    "GuiRendererAccessor",
+    "GuiRendererRetargeter",
     "HotbarItemDecorationDrawer",
     "InvSlotClickHandler",
     "ItemDecorationDrawer",

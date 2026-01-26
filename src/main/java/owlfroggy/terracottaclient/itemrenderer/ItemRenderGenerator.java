@@ -15,16 +15,10 @@ import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.command.RenderDispatcher;
 import net.minecraft.client.render.fog.FogRenderer;
 import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.item.ItemStack;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Util;
-import net.minecraft.util.math.ColorHelper;
-import org.apache.commons.lang3.function.Consumers;
 import owlfroggy.terracottaclient.TCClient;
-import owlfroggy.terracottaclient.itemlibrary.HijackedRenderer;
+import owlfroggy.terracottaclient.mixin.GuiRendererAccessor;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -112,7 +106,7 @@ public class ItemRenderGenerator {
         );
 
         VertexConsumerProvider.Immediate vertexConsumerProvider = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
-        HijackedRenderer renderer = new HijackedRenderer(
+        RetargetableRenderer renderer = new RetargetableRenderer(
             framebuffer,
             guiState,
             vertexConsumerProvider,
@@ -136,8 +130,8 @@ public class ItemRenderGenerator {
         DrawContext drawContext = new DrawContext(client, guiState, mx, my);
         drawContext.drawItemWithoutEntity(itemStack,0,0);
 
-        renderer.prepare();
-        renderer.renderPreparedDraws(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));
+        ((GuiRendererAccessor)renderer).invokePrepare();
+        ((GuiRendererAccessor)renderer).invokeRenderPreapredDraws(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));
 
         vertexConsumerProvider.draw();
         client.getWindow().setScaleFactor(wsf);
@@ -146,6 +140,5 @@ public class ItemRenderGenerator {
         TCClient.MCI.onResolutionChanged();
 
         saveImage(framebuffer, filePath);
-//        ScreenshotRecorder.saveScreenshot(new File(filePath),framebuffer, Consumers.nop());
     }
 }
