@@ -25,36 +25,6 @@ import java.util.ArrayList;
 import java.util.function.Consumer;
 
 public class ItemRenderGenerator {
-    private static void saveImage(Framebuffer framebuffer, String filePath) {
-        framebufferToImageWithAlpha(framebuffer, (image) -> {
-            File savePath = new File(filePath);
-            Util.getIoWorkerExecutor()
-            .execute(() -> {
-                try {
-                    try {
-                        image.writeTo(savePath);
-                    } catch (Throwable var7) {
-                        if (image != null) {
-                            try {
-                                image.close();
-                            } catch (Throwable var6) {
-                                var7.addSuppressed(var6);
-                            }
-                        }
-
-                        throw var7;
-                    }
-
-                    if (image != null) {
-                        image.close();
-                    }
-                } catch (Exception e) {
-                    TCClient.LOGGER.error("yongus",e);
-                }
-            });
-        });
-    }
-
     private static void framebufferToImageWithAlpha(Framebuffer framebuffer, Consumer<NativeImage> callback) {
         // write framebuffer to native image
 
@@ -87,7 +57,7 @@ public class ItemRenderGenerator {
         }, 0);
     }
 
-    public static void saveItemRender(ItemStack itemStack, String filePath, int renderScale) {
+    private static Framebuffer renderToFramebuffer(ItemStack itemStack, int renderScale) {
         MinecraftClient client = TCClient.MCI;
         GuiRenderState guiState = new GuiRenderState();
 
@@ -139,6 +109,36 @@ public class ItemRenderGenerator {
         client.getWindow().setFramebufferHeight(wfy);
         TCClient.MCI.onResolutionChanged();
 
-        saveImage(framebuffer, filePath);
+        return framebuffer;
+    }
+
+    public static void renderToFile(String filePath, ItemStack item, int renderScale) {
+        framebufferToImageWithAlpha(renderToFramebuffer(item,renderScale), (image) -> {
+            File savePath = new File(filePath);
+            Util.getIoWorkerExecutor()
+            .execute(() -> {
+                try {
+                    try {
+                        image.writeTo(savePath);
+                    } catch (Throwable var7) {
+                        if (image != null) {
+                            try {
+                                image.close();
+                            } catch (Throwable var6) {
+                                var7.addSuppressed(var6);
+                            }
+                        }
+
+                        throw var7;
+                    }
+
+                    if (image != null) {
+                        image.close();
+                    }
+                } catch (Exception e) {
+                    TCClient.LOGGER.error("yongus",e);
+                }
+            });
+        });
     }
 }

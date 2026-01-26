@@ -142,8 +142,7 @@ public class TCClient implements ClientModInitializer {
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
-                ItemRenderGenerator.saveItemRender(TCClient.MCI.player.getMainHandStack(), "/tmp/exported/"+Math.random()+".png", 8);
-
+                ItemRenderGenerator.renderToFile( "/tmp/exported/"+Math.random()+".png", TCClient.MCI.player.getMainHandStack(),8);
 //                MCI.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(1, item));
                 context.getSource().sendFeedback(Text.literal("you edid ait! " + DF_STATE.hasUndergroundCodespace()));
 //                MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
