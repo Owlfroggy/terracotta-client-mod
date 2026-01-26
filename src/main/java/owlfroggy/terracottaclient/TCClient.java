@@ -1,5 +1,9 @@
 package owlfroggy.terracottaclient;
 
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 
@@ -15,9 +19,29 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gl.Framebuffer;
+import net.minecraft.client.gl.GlGpuBuffer;
+import net.minecraft.client.gl.SimpleFramebuffer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.gui.render.GuiRenderer;
+import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.gui.render.state.ItemGuiElementRenderState;
+import net.minecraft.client.render.*;
+import net.minecraft.client.render.block.BlockRenderManager;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
+import net.minecraft.client.render.command.RenderDispatcher;
+import net.minecraft.client.render.fog.FogRenderer;
+import net.minecraft.client.render.item.ItemRenderState;
+import net.minecraft.client.render.item.ItemRenderer;
+import net.minecraft.client.render.item.KeyedItemRenderState;
+import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
 import net.minecraft.screen.slot.Slot;
@@ -28,6 +52,9 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.chunk.WorldChunk;
+import org.apache.commons.lang3.function.Consumers;
+import org.apache.commons.lang3.function.Suppliers;
+import org.joml.Matrix3x2f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -36,15 +63,16 @@ import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespacemanager.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
+import owlfroggy.terracottaclient.itemlibrary.HijackedRenderer;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
+import java.io.File;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 
 public class TCClient implements ClientModInitializer {
     public static final String MOD_ID = "terracotta-client";
@@ -146,10 +174,46 @@ public class TCClient implements ClientModInitializer {
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
+                MinecraftClient client = TCClient.MCI;
+                GuiRenderState guiState = new GuiRenderState();
+
+                OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
+
+                Framebuffer framebuffer = new SimpleFramebuffer("itemRender",client.getWindow().getFramebufferWidth(),client.getWindow().getFramebufferHeight(),true);
+                VertexConsumerProvider.Immediate vertexConsumerProvider = VertexConsumerProvider.immediate(new BufferAllocator(256));
+                HijackedRenderer renderer = new HijackedRenderer(
+                    framebuffer,
+                    guiState,
+                    vertexConsumerProvider,
+                    queue,
+                    new RenderDispatcher(
+                        queue,
+                        TCClient.MCI.getBlockRenderManager(),
+                        vertexConsumerProvider,
+                        TCClient.MCI.getAtlasManager(),
+                        new OutlineVertexConsumerProvider(),
+                        VertexConsumerProvider.immediate(new BufferAllocator(256)),
+                        TCClient.MCI.textRenderer
+                    ),
+                    new ArrayList<>()
+                );
+
+                FogRenderer fogRenderer = new FogRenderer();
+
+                int mx = (int)client.mouse.getScaledX(client.getWindow());
+                int my = (int)client.mouse.getScaledY(client.getWindow());
+                DrawContext drawContext = new DrawContext(client, guiState, mx, my);
+                drawContext.drawItemWithoutEntity(new ItemStack(Items.EMERALD),50,50);
+
+                renderer.prepare();
+                renderer.renderPreparedDraws(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));
+
+                ScreenshotRecorder.saveScreenshot(new File("/tmp/exported"),framebuffer, Consumers.nop());
+
 
 //                MCI.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(1, item));
                 context.getSource().sendFeedback(Text.literal("you edid ait! " + DF_STATE.hasUndergroundCodespace()));
-                MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
+//                MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
                 return 1;
             }));
         });
