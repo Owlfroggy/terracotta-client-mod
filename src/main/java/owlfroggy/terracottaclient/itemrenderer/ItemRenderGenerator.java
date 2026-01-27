@@ -20,8 +20,12 @@ import net.minecraft.util.Util;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.mixin.GuiRendererAccessor;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.function.Consumer;
 
 public class ItemRenderGenerator {
@@ -110,6 +114,34 @@ public class ItemRenderGenerator {
         TCClient.MCI.onResolutionChanged();
 
         return framebuffer;
+    }
+
+    /**
+     * @param callback Will return error if the process failed
+     */
+    public static void renderToDataURI(ItemStack item, int renderScale, Consumer<String> callback) {
+        framebufferToImageWithAlpha(renderToFramebuffer(item, renderScale), image -> {
+            try {
+                int w = image.getWidth();
+                int h = image.getHeight();
+
+                BufferedImage bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        bi.setRGB(x, y, image.getColorArgb(x, y));
+                    }
+                }
+
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                ImageIO.write(bi, "PNG", out);
+
+                String b64 = Base64.getEncoder().encodeToString(out.toByteArray());
+                callback.accept("data:image/png;base64," + b64);
+            } catch (Exception e) {
+                callback.accept("error");
+            }
+        });
     }
 
     public static void renderToFile(String filePath, ItemStack item, int renderScale) {
