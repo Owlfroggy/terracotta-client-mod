@@ -205,6 +205,7 @@ public class APIServer extends WebSocketServer {
                     case "CHANGE_MODE" -> ChangeModeA2CRequest::parse;
                     case "START_EDITING_ITEM" -> StartEditingItemA2CRequest::parse;
                     case "STOP_EDITING_ITEM" -> StopEditingItemA2CRequest::parse;
+                    case "RENDER_ITEM" -> RenderItemA2CRequest::parse;
                     case "GIVE_ITEM" -> GiveItemA2CRequest::parse;
                     case "GET_INVENTORY" -> GetInventoryA2CRequest::parse;
                     default -> throw new MessageParsingException("Invalid request method", reducedRequest);

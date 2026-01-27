@@ -17,6 +17,7 @@ import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemlibrary.NoSpaceException;
+import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -212,6 +213,22 @@ public class APIConnectionHandler {
                 ));
             }
             respond(r, new GetInventoryC2AResponse(itemEntries));
+        }
+        else if (request instanceof RenderItemA2CRequest r) {
+            ItemStack item = Utils.snbtToItem(r.getSnbt());
+            try {
+                TCClient.MCI.execute(() -> {
+                    ItemRenderGenerator.renderToDataURI(item,2,image -> {
+                        if (image.equals("error")) {
+                            respond(r, new ErrorResponse(APIErrorCode.GENERIC_ERROR, "Item could not be rendered"));
+                        } else {
+                            respond(r, new RenderItemC2AResponse(image));
+                        }
+                    });
+                });
+            } catch (Exception e) {
+                respond(r, new ErrorResponse(APIErrorCode.GENERIC_ERROR, "Item could not be rendered: " + e));
+            }
         }
     }
 

@@ -8,6 +8,7 @@ public enum RequestMethod {
     CHANGE_MODE,
     START_EDITING_ITEM,
     STOP_EDITING_ITEM,
+    RENDER_ITEM,
     GIVE_ITEM,
     GET_INVENTORY,
 }
