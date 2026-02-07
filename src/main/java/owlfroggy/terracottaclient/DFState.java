@@ -401,10 +401,14 @@ implements
      */
     public void scanPlot() {
         if (isScanning()) {return;}
-        setScanState(ScanState.SCANNING_BOUNDS);
 
         CompletableFuture.runAsync(() -> {
             try {
+                if (mode != Mode.DEV)
+                    throw new RuntimeException("Player must be in dev mode to scan plot.");
+
+                setScanState(ScanState.SCANNING_BOUNDS);
+
                 PlotType currentSizeGuess = PlotType.BASIC;
                 Optional<Vec3d> teleportResult = Optional.empty();
                 Vec3d plotOriginGuess;
