@@ -156,8 +156,8 @@ implements
 
     private ScanState scanState = ScanState.NOT_SCANNED;
     public void setScanState(ScanState newState) {
+        if (scanState != newState) APIServer.broadcastNotification(new ScanStateChangedC2ANotification(newState));
         scanState = newState;
-        APIServer.broadcastNotification(new ScanStateChangedC2ANotification(newState));
     }
     public ScanState getScanState() { return scanState; }
     public boolean isScanning() { return scanState == ScanState.SCANNING_BOUNDS || scanState == ScanState.SCANNING_CODE; }
@@ -763,6 +763,8 @@ implements
         queuedBlockRescans.clear();
         if (isScanning()) {
             failScan("Plot was left mid-scan.");
+        } else {
+            setScanState(ScanState.NOT_SCANNED);
         }
     }
 
