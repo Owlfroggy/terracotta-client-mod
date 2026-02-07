@@ -71,6 +71,7 @@ public class TCClient implements ClientModInitializer {
 
     public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
     private static final List<Text> queuedChatMessages = new ArrayList<>();
+    private static boolean serverIsDiamondFire = false;
 
     private static int ticksUntilTryAPIServer = 0;
 
@@ -114,64 +115,65 @@ public class TCClient implements ClientModInitializer {
         //tcallow
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager
-                .literal("tcallow")
-                .then(
-                    ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
-                    .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, true))
-                ).executes(context -> {
-                    context.getSource().sendError(Text.literal("No app id provided."));
-                        return 0;
-                })
-            );
+            .literal("tcallow")
+            .requires(source -> isOnDiamondFire())
+            .then(
+                ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
+                .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, true))
+            ).executes(context -> {
+                context.getSource().sendError(Text.literal("No app id provided."));
+                    return 0;
+            }));
         });
         //tcdeny
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager
-                .literal("tcdeny")
-                .then(
-                    ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
-                    .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, false))
-                ).executes(context -> {
-                    context.getSource().sendError(Text.literal("No app id provided."));
-                        return 0;
-                })
-            );
+            .literal("tcdeny")
+            .requires(source -> isOnDiamondFire())
+            .then(
+                ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
+                .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, false))
+            ).executes(context -> {
+                context.getSource().sendError(Text.literal("No app id provided."));
+                    return 0;
+            }));
         });
 
-
-
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("terracotta_test").executes(context -> {
-//                ItemRenderGenerator.renderToFile( "/tmp/exported/"+Math.random()+".png", TCClient.MCI.player.getMainHandStack(),8);
-//                MCI.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(1, item));
-                ItemRenderGenerator.renderToDataURI(TCClient.MCI.player.getMainHandStack(),4, result -> {
-                    TCClient.LOGGER.info(result);
-                });
-                context.getSource().sendFeedback(Text.literal("you edid ait! " + DF_STATE.hasUndergroundCodespace()));
+            dispatcher.register(ClientCommandManager
+            .literal("terracotta_test")
+            .executes(context -> {
+                context.getSource().sendFeedback(Text.literal(""+isOnDiamondFire()));
 //                MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
                 return 1;
             }));
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("tcclientdfstate").executes(context -> {
+            dispatcher.register(ClientCommandManager
+            .literal("tcclientdfstate")
+            .requires(source -> isOnDiamondFire())
+            .executes(context -> {
                 context.getSource().sendFeedback(Text.literal(
-                "=- Internal DF state -="
-                + "\nRank: " + DF_STATE.getRank()
-                + "\nMode: " + DF_STATE.getMode()
-                + "\n\nPlot Name: " + DF_STATE.getPlotName()
-                + "\nPlot Id: " + DF_STATE.getPlotId()
-                + "\nPlot Origin: " + DF_STATE.getPlotOrigin()
-                + "\nPlot Type: " + DF_STATE.getPlotType()
-                + "\nHas Underground Codespace: " + DF_STATE.hasUndergroundCodespace()
-                + "\n\nScan State: " + DF_STATE.getScanState()
+                    "=- Internal DF state -="
+                    + "\nRank: " + DF_STATE.getRank()
+                    + "\nMode: " + DF_STATE.getMode()
+                    + "\n\nPlot Name: " + DF_STATE.getPlotName()
+                    + "\nPlot Id: " + DF_STATE.getPlotId()
+                    + "\nPlot Origin: " + DF_STATE.getPlotOrigin()
+                    + "\nPlot Type: " + DF_STATE.getPlotType()
+                    + "\nHas Underground Codespace: " + DF_STATE.hasUndergroundCodespace()
+                    + "\n\nScan State: " + DF_STATE.getScanState()
                 ));
                 return 1;
             }));
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("rescanplot").executes(context -> {
+            dispatcher.register(ClientCommandManager
+            .literal("rescanplot")
+            .requires(source -> isOnDiamondFire())
+            .executes(context -> {
                 DF_STATE.scanPlot();
                 return 1;
             }));
@@ -232,7 +234,10 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("dumptemplatecache").executes(context -> {
+            dispatcher.register(ClientCommandManager
+            .literal("dumptemplatecache")
+            .requires(source -> isOnDiamondFire())
+            .executes(context -> {
                 context.getSource().sendFeedback(Text.literal("BY LOCATION -----------"));
                 context.getSource().sendFeedback(Text.literal(DF_STATE.templatesByLocation.toString()));
                 context.getSource().sendFeedback(Text.literal("BY NAME-----------"));
@@ -269,6 +274,14 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (API_SERVER != null && API_SERVER.isOpen() && TCClient.MCI.world == null) {
+                try {
+                    API_SERVER.stop();
+                } catch (Exception ignored) {}
+            }
+
+            if (!isOnDiamondFire()) return;
+
             // tick receivers
             for (TickEndReceiver receiver : tickEndReceivers) {
                 try {
@@ -287,6 +300,7 @@ public class TCClient implements ClientModInitializer {
                         API_SERVER = new APIServer(new InetSocketAddress("localhost", 39893));
                         Thread apiServerThread = new Thread(() -> {
                             try {
+                                TCClient.LOGGER.info("starting api server");
                                 API_SERVER.run();
                             } catch (Exception e) {
                                 TCClient.LOGGER.error("Failed to start API server",e);
@@ -300,12 +314,6 @@ public class TCClient implements ClientModInitializer {
                         API_SERVER = null;
                     }
                 }
-            } else {
-                if (API_SERVER != null && API_SERVER.isOpen()) {
-                    try {
-                        API_SERVER.stop();
-                    } catch (Exception ignored) {}
-                }
             }
         });
         ClientChunkEvents.CHUNK_LOAD.register((clientWorld, worldChunk) -> {
@@ -318,6 +326,15 @@ public class TCClient implements ClientModInitializer {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             loadedChunks.clear();
         });
+    }
+
+    public static void setIsOnDiamondFire(boolean val) {
+        serverIsDiamondFire = val;
+    }
+    public static boolean isOnDiamondFire() {
+        if (TCClient.MCI.world == null || TCClient.MCI.player == null)
+            return false;
+        return serverIsDiamondFire;
     }
 
     public static boolean isChunkLoaded(ChunkPos chunkPos) {
