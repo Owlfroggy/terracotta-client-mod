@@ -76,6 +76,12 @@ implements
         BACK_LEFT,
         BACK_RIGHT
     }
+    public enum ScanState {
+        NOT_SCANNED,
+        SCANNING_BOUNDS,
+        SCANNING_CODE,
+        SCANNED
+    }
 
     public static final HashMap<PlotType, Integer> CODESPACE_Z_SIZES = new HashMap<>(Map.of(
         PlotType.BASIC, 51,
@@ -135,7 +141,6 @@ implements
     );
 
     public boolean modeRefreshQueued = false;
-    public boolean plotScanActive = false;
 
     public final HashMap<Vec3i, CachedTemplate> templatesByLocation = new HashMap<>();
     public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
@@ -150,6 +155,11 @@ implements
     private final LinkedList<BlockPos> queuedBlockRescans = new LinkedList<>();
     private final LinkedList<ChunkPos> queuedChunkRescans = new LinkedList<>();
     private ChunkPos nextChunkToScan = null;
+
+    private ScanState scanState = ScanState.NOT_SCANNED;
+    public ScanState getScanState() { return scanState; }
+    public boolean isScanning() { return scanState == ScanState.SCANNING_BOUNDS || scanState == ScanState.SCANNING_CODE; }
+    public boolean isScanned() { return scanState == ScanState.SCANNED; }
 
     private Rank rank = null;
     public Rank getRank() { return rank != null ? rank : Rank.NON; }
@@ -388,8 +398,8 @@ implements
      * Updates plot bounds, size, and code contents
      */
     public void scanPlot() {
-        if (plotScanActive) {return;}
-        plotScanActive = true;
+        if (isScanning()) {return;}
+        scanState = ScanState.SCANNING_BOUNDS;
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -413,7 +423,7 @@ implements
                     plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
                 } catch (Exception e) {
                     TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})", e.toString());
-                    plotScanActive = false;
+                    scanState = ScanState.NOT_SCANNED;
                     return;
                 }
 
@@ -425,7 +435,7 @@ implements
                     if (result.isPresent()) doesHaveUndergroundCodespace = true;
                 } catch (Exception e) {
                     TCClient.LOGGER.warn("Plot scan failed during underground codespace check due to not receiving a teleport response ({})", e.toString());
-                    plotScanActive = false;
+                    scanState = ScanState.NOT_SCANNED;
                     return;
                 }
 
@@ -450,7 +460,7 @@ implements
                         teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
                     } catch (Exception e) {
                         TCClient.LOGGER.warn("Plot scan failed during size fetch due to not receiving a teleport response ({})", e.toString());
-                        plotScanActive = false;
+                        scanState = ScanState.NOT_SCANNED;
                         return;
                     }
 
@@ -491,9 +501,9 @@ implements
 
                 TCClient.safeMessage(Text.literal("Detected plot size:" + currentSizeGuess));
                 TCClient.safeMessage(Text.literal("Detected plot origin:" + plotOrigin));
-                plotScanActive = false;
+                scanState = ScanState.SCANNING_CODE;
             } catch (Exception e) {
-                plotScanActive = false;
+                scanState = ScanState.NOT_SCANNED;
                 queuedChunkRescans.clear();
                 TCClient.LOGGER.error("Error while scanning plot", e);
             }
@@ -720,6 +730,10 @@ implements
             nextChunkToScan = null;
             TCClient.MOVEMENT_MANAGER.stopMovement("SCAN_QUEUED_CHUNK");
         }
+
+        if (nextChunkToScan == null && queuedChunkRescans.isEmpty() && scanState == ScanState.SCANNING_CODE) {
+            scanState = ScanState.SCANNED;
+        }
     }
 
     @Override
@@ -727,6 +741,7 @@ implements
         clearTemplates();
         queuedChunkRescans.clear();
         queuedBlockRescans.clear();
+        scanState = ScanState.NOT_SCANNED;
     }
 
     @Override

@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.TCClient;
 
 @Mixin(ClientPlayNetworkHandler.class)
@@ -14,7 +15,7 @@ public class ChatMessageInterceptor {
 	private void init(GameMessageS2CPacket packet, CallbackInfo info) {
         if (!packet.overlay()) {
             boolean shouldSuppressLocate = TCClient.DF_STATE.modeRefreshQueued;
-            boolean shouldSupprsesOOB = TCClient.DF_STATE.plotScanActive;
+            boolean shouldSupprsesOOB = TCClient.DF_STATE.getScanState() == DFState.ScanState.SCANNING_BOUNDS;
             boolean isEditingCode = TCClient.CODE_EDIT_MANAGER.isEditingCode();
 
 

@@ -86,7 +86,7 @@ implements
     private ItemStack oldFirstSlotItem;
 
     public void editCode(String[] placeTemplates, TemplateIdentifier[] breakTemplates) throws Exception {
-        if (TCClient.DF_STATE.getPlotOrigin() == null) {
+        if (!TCClient.DF_STATE.isScanned()) {
             throw new IllegalStateException("Plot has not been scanned");
         }
 
@@ -212,7 +212,7 @@ implements
 
     @Override
     public void onTickEnd(MinecraftClient client) {
-        if (TCClient.DF_STATE.getPlotOrigin() == null) return;
+        if (!TCClient.DF_STATE.isScanned()) return;
 
         if (TCClient.DF_STATE.getMode() == DFState.Mode.DEV) {
             codeEditLogic: if (editState != GlobalEditState.IDLE) {

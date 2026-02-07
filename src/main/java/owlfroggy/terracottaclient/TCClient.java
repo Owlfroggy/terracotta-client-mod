@@ -164,6 +164,7 @@ public class TCClient implements ClientModInitializer {
                 + "\nPlot Origin: " + DF_STATE.getPlotOrigin()
                 + "\nPlot Type: " + DF_STATE.getPlotType()
                 + "\nHas Underground Codespace: " + DF_STATE.hasUndergroundCodespace()
+                + "\n\nScan State: " + DF_STATE.getScanState()
                 ));
                 return 1;
             }));
