@@ -1,9 +1,7 @@
 package owlfroggy.terracottaclient.mixin;
 
 import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,7 +15,7 @@ public class ChatMessageInterceptor {
         if (!packet.overlay()) {
             boolean shouldSuppressLocate = TCClient.DF_STATE.modeRefreshQueued;
             boolean shouldSupprsesOOB = TCClient.DF_STATE.plotScanActive;
-            boolean isEditingCode = TCClient.CODESPACE_MANAGER.isEditingCode();
+            boolean isEditingCode = TCClient.CODE_EDIT_MANAGER.isEditingCode();
 
 
             if (shouldSuppressLocate && TCClient.DF_STATE.isMessageLocateResult(packet.content()))

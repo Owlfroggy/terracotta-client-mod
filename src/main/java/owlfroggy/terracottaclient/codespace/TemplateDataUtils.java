@@ -1,8 +1,7 @@
-package owlfroggy.terracottaclient.codespacemanager;
+package owlfroggy.terracottaclient.codespace;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import owlfroggy.terracottaclient.TCClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

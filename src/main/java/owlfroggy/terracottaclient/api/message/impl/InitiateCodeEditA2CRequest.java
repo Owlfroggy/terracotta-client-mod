@@ -4,8 +4,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import owlfroggy.terracottaclient.api.RequestMethod;
 import owlfroggy.terracottaclient.api.message.Request;
-import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
-import owlfroggy.terracottaclient.codespacemanager.TemplateType;
+import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
+import owlfroggy.terracottaclient.codespace.TemplateType;
 
 public class InitiateCodeEditA2CRequest extends Request {
     private String[] placeTemplates;

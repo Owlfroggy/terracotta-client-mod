@@ -2,7 +2,6 @@ package owlfroggy.terracottaclient.api;
 
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Colors;
 import org.java_websocket.WebSocket;
@@ -15,8 +14,6 @@ import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.*;
-import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
-import owlfroggy.terracottaclient.itemlibrary.NoSpaceException;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.util.HashMap;
@@ -136,7 +133,7 @@ public class APIConnectionHandler {
             }
         }
         else if (request instanceof InitiateCodeEditA2CRequest r) {
-            if (TCClient.CODESPACE_MANAGER.isEditingCode()) {
+            if (TCClient.CODE_EDIT_MANAGER.isEditingCode()) {
                 respond(r, new ErrorResponse(
                     APIErrorCode.EDIT_IN_PROGRESS,
                     "A code edit operation is already in progress."
@@ -152,7 +149,7 @@ public class APIConnectionHandler {
             }
 
             try {
-                TCClient.CODESPACE_MANAGER.editCode(r.getPlaceTemplates(), r.getBreakTemplates());
+                TCClient.CODE_EDIT_MANAGER.editCode(r.getPlaceTemplates(), r.getBreakTemplates());
                 TCClient.API_SERVER.setRequestAsPending(r, this);
             } catch (Exception e) {
                 respond(r, new ErrorResponse(

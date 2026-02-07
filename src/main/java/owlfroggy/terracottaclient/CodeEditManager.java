@@ -1,11 +1,8 @@
 package owlfroggy.terracottaclient;
 
 import com.google.gson.JsonObject;
-import net.fabricmc.loader.impl.lib.sat4j.core.Vec;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.component.DataComponentTypes;
@@ -16,35 +13,29 @@ import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtByte;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtInt;
-import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.PlayerInput;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.*;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
-import owlfroggy.terracottaclient.codespacemanager.*;
+import owlfroggy.terracottaclient.codespace.*;
 import owlfroggy.terracottaclient.gameinterface.ClientBlockUpdateReceiver;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
-import owlfroggy.terracottaclient.gameinterface.PlotChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 import owlfroggy.terracottaclient.mixin.SequencedPacketAccessor;
 
 import java.util.*;
 
-public class CodespaceManager extends Manager
+public class CodeEditManager extends Manager
 implements
     ChunkReceiver,
     ClientBlockUpdateReceiver,
-    PlotChangeReceiver,
     TickEndReceiver
 {
     private class CodeEdit {
@@ -82,30 +73,9 @@ implements
         IDLE,
     }
 
-    private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
-        "PLAYER EVENT", TemplateType.PLAYER_EVENT,
-        "ENTITY EVENT", TemplateType.ENTITY_EVENT,
-        "GAME EVENT", TemplateType.GAME_EVENT,
-        "FUNCTION", TemplateType.FUNCTION,
-        "PROCESS", TemplateType.PROCESS
-    ));
     private final ItemStack REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
     private static final int TEMPLATE_VACUUM_SLOT = 0;
 
-    public final HashMap<Vec3i, CachedTemplate> templatesByLocation = new HashMap<>();
-    public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
-        TemplateType.PLAYER_EVENT, new HashMap<>(),
-        TemplateType.ENTITY_EVENT, new HashMap<>(),
-        TemplateType.GAME_EVENT, new HashMap<>(),
-        TemplateType.FUNCTION, new HashMap<>(),
-        TemplateType.PROCESS, new HashMap<>()
-    ));
-    public final HashMap<java.lang.Integer, CodespaceFloor> floors = new HashMap<>();
-
-    private final LinkedList<BlockPos> queuedBlockRescans = new LinkedList<>();
-    private final LinkedList<ChunkPos> queuedChunkRescans = new LinkedList<>();
-
-    private ChunkPos nextChunkToScan = null;
     private GlobalEditState editState = GlobalEditState.IDLE;
     private final ArrayList<CodeEdit> queuedCodeEdits = new ArrayList<>();
     private final ArrayList<CodeEdit> stagedCodeEdits = new ArrayList<>();
@@ -114,16 +84,6 @@ implements
     private int stagedEditActiveIndex = 0;
     private ItemStack oldOffhandItem;
     private ItemStack oldFirstSlotItem;
-
-    public CodespaceFloor getFloor(int yLevel) {
-        if (floors.containsKey(yLevel)) {
-            return floors.get(yLevel);
-        } else {
-            CodespaceFloor floor = new CodespaceFloor(yLevel);
-            floors.put(yLevel, floor);
-            return floor;
-        }
-    }
 
     public void editCode(String[] placeTemplates, TemplateIdentifier[] breakTemplates) throws Exception {
         if (TCClient.DF_STATE.getPlotOrigin() == null) {
@@ -143,7 +103,7 @@ implements
         int bottomFloor = TCClient.DF_STATE.hasUndergroundCodespace() ? 5 : 50;
         openFinderLoop: for (int floorY = bottomFloor; floorY <= 250; floorY += 5) {
             for (int rowX = -2; rowX >= -17; rowX -= 3) {
-                if (getFloor(floorY).getRow(rowX).templates.isEmpty()) {
+                if (TCClient.DF_STATE.getFloor(floorY).getRow(rowX).templates.isEmpty()) {
                     openPositions.add(new Vec3i(rowX,floorY,0));
                     if (openPositions.size() >= placeTemplates.length) break openFinderLoop;
                 }
@@ -155,7 +115,7 @@ implements
         }
 
         for (TemplateIdentifier identifier : breakTemplates) {
-            CachedTemplate cachedTemplate = getTemplateByIdentifier(identifier);
+            CachedTemplate cachedTemplate = TCClient.DF_STATE.getTemplateByIdentifier(identifier);
             if (cachedTemplate == null) {
                 TCClient.LOGGER.warn("Template will not be broken because it is absent from the cache: "+identifier);
                 continue;
@@ -183,7 +143,7 @@ implements
                 continue placeLoop;
             }
 
-            CachedTemplate cachedTemplate = getTemplateByIdentifier(identifier);
+            CachedTemplate cachedTemplate = TCClient.DF_STATE.getTemplateByIdentifier(identifier);
 
             if (cachedTemplate == null) {
                 Vec3i pos = openPositions.poll();
@@ -208,65 +168,6 @@ implements
         }
 
         editState = GlobalEditState.MOVING;
-    }
-
-    /**
-     * returns null if the template is not in the cache
-     * if there are multiple templates with the same identifier, returns the one at `index`
-     */
-    public CachedTemplate getTemplateByIdentifier(TemplateIdentifier id, int index) {
-        ArrayList<CachedTemplate> templates = templatesByName.get(id.type()).get(id.name());
-        if (templates == null) return null;
-
-        return templates.get(index);
-    }
-    /**
-     * returns null if the template is not in the cache
-     * if there are multiple templates with the same identifier, returns the first one in the ArrayList
-     */
-    public CachedTemplate getTemplateByIdentifier(TemplateIdentifier id) {
-        return getTemplateByIdentifier(id, 0);
-    }
-
-    private void addTemplate(TemplateType type, String name, Vec3i plotSpacePos) {
-        CachedTemplate template = new CachedTemplate(type,name,plotSpacePos);
-
-        if (templatesByLocation.containsKey(plotSpacePos))
-            throw new RuntimeException("Failed to add template "+template.toString()+" because its location is already occupied by "+templatesByLocation.get(plotSpacePos));
-        templatesByLocation.put(plotSpacePos,template);
-
-        if (!templatesByName.get(type).containsKey(name))
-            templatesByName.get(type).put(name,new ArrayList<>());
-        templatesByName.get(type).get(name).add(template);
-
-        getFloor(plotSpacePos.getY()).getRow(plotSpacePos.getX()).addTemplate(template);
-    }
-
-    private void removeTemplate(CachedTemplate template) {
-        templatesByLocation.remove(template.plotSpacePos);
-
-        templatesByName.get(template.id.type()).get(template.id.name()).remove(template);
-        if (templatesByName.get(template.id.type()).get(template.id.name()).isEmpty())
-            templatesByName.get(template.id.type()).remove(template.id.name());
-
-        CodespaceFloor floor = getFloor(template.plotSpacePos.getY());
-        CodespaceRow row = floor.getRow(template.plotSpacePos.getX());
-        row.removeTemplate(template);
-//        if (row.templates.isEmpty()) {
-//            floor.rows.remove(row.xPos, row);
-//            if (floor.rows.isEmpty()) {
-//                floors.remove(floor.yLevel, floor);
-//            }
-//        }
-    }
-
-    private void clearTemplates() {
-        templatesByLocation.clear();
-        for (HashMap<String,ArrayList<CachedTemplate>> templateMap : templatesByName.values()) {
-            templateMap.clear();
-        }
-        floors.clear();
-        queuedChunkRescans.clear();
     }
 
     private void processCodeEditResponse(Vec3i plotSpacePos, BlockState blockState, boolean cameFromClient) {
@@ -305,78 +206,6 @@ implements
         }
     }
 
-    /**
-     * @param blockPos in WORLD SPACE!!
-     */
-    public void processBlockTemplate(BlockPos blockPos) {
-        if (TCClient.MCI.world == null) return;
-
-        //remove old template at this block
-        Vec3i templatePos = TCClient.DF_STATE.toPlotSpace(blockPos).add(1,0,0);
-        if (templatesByLocation.containsKey(templatePos))
-            removeTemplate(templatesByLocation.get(templatePos));
-
-
-        // check if this block is a sign
-        BlockState signBlockState = TCClient.MCI.world.getBlockState(blockPos);
-        Identifier signBlockId = Registries.BLOCK.getId(signBlockState.getBlock());
-        if (!signBlockId.equals(Identifier.ofVanilla("oak_wall_sign"))) return;
-        BlockEntity blockEntity = TCClient.MCI.world.getBlockEntity(blockPos);
-        if (blockEntity instanceof SignBlockEntity sign) {
-            // check if this is a header
-            Text topLine = sign.getFrontText().getMessage(0,false);
-            if (!NAMES_TO_TEMPLATE_TYPES.containsKey(topLine.getString())) return;
-            if (!TCClient.DF_STATE.isWorldPosInCodespace(blockPos)) return;
-            TemplateType templateType = NAMES_TO_TEMPLATE_TYPES.get(topLine.getString());
-
-            // add template
-            String templateName = sign.getFrontText().getMessage(1,false).getString();
-            addTemplate(templateType, templateName, templatePos);
-        };
-    }
-
-    public void scanChunk(ChunkPos chunkPos) {
-        int chunkX = chunkPos.x;
-        int chunkZ = chunkPos.z;
-
-        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
-        if (plotOrigin == null) return;
-
-        if (queuedChunkRescans.contains(chunkPos)) {
-            queuedChunkRescans.remove(chunkPos);
-            // scanning progres report
-            TCClient.MCI.player.sendMessage(
-                Text.of(
-                "Scanning codespace: " + (int)(100-(double)queuedChunkRescans.size()/TCClient.DF_STATE.getTotalCodespaceChunks()*100) + "%"
-                ), true
-            );
-        }
-
-        //dont scan chunk if it doesnt touch the codespace
-        if (!(
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16,0,chunkZ*16)) ||
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16+15,0,chunkZ*16)) ||
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16,0,chunkZ*16+15)) ||
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16+15,0,chunkZ*16+15))
-        )) {
-            return;
-        }
-
-        for (int floor = 1; floor <= 50; floor++) {
-            int y = floor*5;
-            for (int x = 0; x < 16; x++) {
-                for (int z = 0; z < 16; z++) {
-                    BlockPos blockPos = new BlockPos(chunkX*16+x, y, chunkZ*16+z);
-                    processBlockTemplate(blockPos);
-                }
-            }
-        }
-    }
-
-    public void queueChunkForScan(ChunkPos chunkPos) {
-        queuedChunkRescans.add(chunkPos);
-    }
-
     public boolean isEditingCode() {
         return editState != GlobalEditState.IDLE;
     }
@@ -384,12 +213,6 @@ implements
     @Override
     public void onTickEnd(MinecraftClient client) {
         if (TCClient.DF_STATE.getPlotOrigin() == null) return;
-
-        while (!queuedBlockRescans.isEmpty()) {
-            BlockPos next = queuedBlockRescans.poll();
-            if (next == null) {continue;}
-            processBlockTemplate(next);
-        }
 
         if (TCClient.DF_STATE.getMode() == DFState.Mode.DEV) {
             codeEditLogic: if (editState != GlobalEditState.IDLE) {
@@ -608,57 +431,11 @@ implements
                 }
 
             }
-            else {
-                // chunk scanning
-                if (
-                    !TCClient.MOVEMENT_MANAGER.isMoving() &&
-                    !queuedChunkRescans.isEmpty() &&
-                    (nextChunkToScan == null || !TCClient.MOVEMENT_MANAGER.getCurrentMovementId().equals("SCAN_QUEUED_CHUNK"))
-                ) {
-                    ChunkPos closestChunk = null;
-                    double smallestDistance = Integer.MAX_VALUE;
-
-                    List<ChunkPos> rescans = queuedChunkRescans.stream().toList();
-                    for (ChunkPos pos : rescans) {
-                        Vec3d chunkStartPos = new Vec3d(pos.getStartX(),50,pos.getStartZ());
-                        Vec3d playerFlatPos = client.player.getEntityPos();
-                        double distance = chunkStartPos.distanceTo(playerFlatPos);
-                        if (distance < smallestDistance) {
-                            smallestDistance = distance;
-                            closestChunk = pos;
-                        }
-                    }
-                    nextChunkToScan = closestChunk;
-
-//                    TCClient.LOGGER.info(nextChunkToScan.toString());
-
-//                    nextChunkToScan = queuedChunkRescans.peek();
-                    TCClient.MOVEMENT_MANAGER.setMovementDestination(
-                        TCClient.DF_STATE.toPlotSpace(
-                            TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3d(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
-                        ),
-                        "SCAN_QUEUED_CHUNK"
-                    );
-                }
-
-                if (nextChunkToScan != null && !queuedChunkRescans.contains(nextChunkToScan)) {
-                    nextChunkToScan = null;
-                    TCClient.MOVEMENT_MANAGER.stopMovement("SCAN_QUEUED_CHUNK");
-                }
-            }
         }
     }
 
     @Override
-    public void onPlotChanged(int plotId, DFState.Mode mode) {
-        clearTemplates();
-    }
-
-    @Override
-    public void onChunkLoad(ChunkPos chunkPos) {
-        if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) return;
-        scanChunk(chunkPos);
-    }
+    public void onChunkLoad(ChunkPos chunkPos) {}
 
     @Override
     public void onChunkDelta(ChunkDeltaUpdateS2CPacket packet) {
@@ -666,9 +443,7 @@ implements
             Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
             if (plotOrigin == null) return;
 
-            // rescanning
             BlockPos immutablePos = blockPos.toImmutable();
-            queuedBlockRescans.add(immutablePos);
 
             Vec3i plotSpacePos = TCClient.DF_STATE.toPlotSpace(immutablePos);
             processCodeEditResponse(plotSpacePos,blockState,false);
@@ -676,17 +451,13 @@ implements
     }
 
     @Override
+    public void onBlockEntityUpdate(BlockEntityUpdateS2CPacket packet) {}
+
+    @Override
     public void onClientBlockUpdate(BlockPos pos, BlockState state) {
         Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
         if (plotOrigin == null) return;
 
         processCodeEditResponse(TCClient.DF_STATE.toPlotSpace(pos), state,true);
-    }
-
-    @Override
-    public void onBlockEntityUpdate(BlockEntityUpdateS2CPacket packet) {
-        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
-        if (plotOrigin == null) return;
-        queuedBlockRescans.add(packet.getPos().toImmutable());
     }
 }

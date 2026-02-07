@@ -28,8 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
-import owlfroggy.terracottaclient.codespacemanager.TemplateIdentifier;
-import owlfroggy.terracottaclient.codespacemanager.TemplateType;
+import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
+import owlfroggy.terracottaclient.codespace.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
@@ -54,7 +54,7 @@ public class TCClient implements ClientModInitializer {
     public static ChatCommandManager COMMAND_MANAGER;
     public static DFState DF_STATE;
     public static MovementManager MOVEMENT_MANAGER;
-    public static CodespaceManager CODESPACE_MANAGER;
+    public static CodeEditManager CODE_EDIT_MANAGER;
     public static ItemLibraryManager ITEM_LIBRARY_MANAGER;
     public static APIServer API_SERVER;
 
@@ -79,7 +79,7 @@ public class TCClient implements ClientModInitializer {
         COMMAND_MANAGER = setupManager(new ChatCommandManager());
         DF_STATE = setupManager(new DFState());
         MOVEMENT_MANAGER = setupManager(new MovementManager());
-        CODESPACE_MANAGER = setupManager(new CodespaceManager());
+        CODE_EDIT_MANAGER = setupManager(new CodeEditManager());
         ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
 
         WorldRenderEvents.END_MAIN.register(worldRenderContext -> {
@@ -182,7 +182,7 @@ public class TCClient implements ClientModInitializer {
 //                    TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(TEST_TEMPLATE_DATA)).toString()
 //                ));
                 try {
-                    TCClient.CODESPACE_MANAGER.editCode(new String[]{
+                    TCClient.CODE_EDIT_MANAGER.editCode(new String[]{
                         "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",
                         "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",
                         "H4sIAAAAAAACA62TTUvEMBCG/8uAoFBhV1gPQTzpUTx4lKVM02mJmyYlTYW19L87aVbs2nZlYU/NTN+ZeZ98dJBpK3cNiPcOVA4ixpAcvgKK1kgO0ZUsYo2nKqi3fQI5ehwUKlVGeYVafVFaa9yTgz5ZaBj/pyi9smamc1wNmVieeixZF6d1ECIBbyqnDB3nbT00EvBsMNN0alJccDH5n/qeORptPYi7+z5AzYkSHupKYhE8UYGt9hfDk7aqR3AGK+LsQ2GNF7yxAh+vPtFd3yab1c3I7GrqVVpHr9nHWWYd1YT+f5dsYWpScaqRtg5rrQwd2QsTxx1MW007rDejmvUx0gsbVzWf5695h3LHXNxGOZIBkIeHPfb7wcSBZpFWotbpwn2+OPD8wU54R2+osq3xKQ9wlFl0+UlyqW0T7vof9G3/DePHGxvSAwAA",
@@ -211,7 +211,7 @@ public class TCClient implements ClientModInitializer {
 //                    TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(TEST_TEMPLATE_DATA)).toString()
 //                ));
                 try {
-                    TCClient.CODESPACE_MANAGER.editCode(new String[]{},new TemplateIdentifier[]{
+                    TCClient.CODE_EDIT_MANAGER.editCode(new String[]{},new TemplateIdentifier[]{
                         new TemplateIdentifier(TemplateType.FUNCTION, "fui_data"),
                         new TemplateIdentifier(TemplateType.FUNCTION, "fui_initialize_player"),
                         new TemplateIdentifier(TemplateType.FUNCTION, "fui_componentize_text"),
@@ -233,31 +233,31 @@ public class TCClient implements ClientModInitializer {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("dumptemplatecache").executes(context -> {
                 context.getSource().sendFeedback(Text.literal("BY LOCATION -----------"));
-                context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.templatesByLocation.toString()));
+                context.getSource().sendFeedback(Text.literal(DF_STATE.templatesByLocation.toString()));
                 context.getSource().sendFeedback(Text.literal("BY NAME-----------"));
-                context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.templatesByName.toString()));
+                context.getSource().sendFeedback(Text.literal(DF_STATE.templatesByName.toString()));
                 context.getSource().sendFeedback(Text.literal("BY FLOOR-----------"));
-                context.getSource().sendFeedback(Text.literal(CODESPACE_MANAGER.floors.toString()));
+                context.getSource().sendFeedback(Text.literal(DF_STATE.floors.toString()));
 
                 int numFunctions = 0;
-                for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.FUNCTION).keySet()) {
-                    numFunctions += CODESPACE_MANAGER.templatesByName.get(TemplateType.FUNCTION).get(name).size();
+                for (String name : DF_STATE.templatesByName.get(TemplateType.FUNCTION).keySet()) {
+                    numFunctions += DF_STATE.templatesByName.get(TemplateType.FUNCTION).get(name).size();
                 }
 
                 int numEvents = 0;
-                for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.PLAYER_EVENT).keySet()) {
-                    numEvents += CODESPACE_MANAGER.templatesByName.get(TemplateType.PLAYER_EVENT).get(name).size();
+                for (String name : DF_STATE.templatesByName.get(TemplateType.PLAYER_EVENT).keySet()) {
+                    numEvents += DF_STATE.templatesByName.get(TemplateType.PLAYER_EVENT).get(name).size();
                 }
-                for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.ENTITY_EVENT).keySet()) {
-                    numEvents += CODESPACE_MANAGER.templatesByName.get(TemplateType.ENTITY_EVENT).get(name).size();
+                for (String name : DF_STATE.templatesByName.get(TemplateType.ENTITY_EVENT).keySet()) {
+                    numEvents += DF_STATE.templatesByName.get(TemplateType.ENTITY_EVENT).get(name).size();
                 }
-                for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.GAME_EVENT).keySet()) {
-                    numEvents += CODESPACE_MANAGER.templatesByName.get(TemplateType.GAME_EVENT).get(name).size();
+                for (String name : DF_STATE.templatesByName.get(TemplateType.GAME_EVENT).keySet()) {
+                    numEvents += DF_STATE.templatesByName.get(TemplateType.GAME_EVENT).get(name).size();
                 }
 
                 int numProcesses = 0;
-                for (String name : CODESPACE_MANAGER.templatesByName.get(TemplateType.PROCESS).keySet()) {
-                    numProcesses += CODESPACE_MANAGER.templatesByName.get(TemplateType.PROCESS).get(name).size();
+                for (String name : DF_STATE.templatesByName.get(TemplateType.PROCESS).keySet()) {
+                    numProcesses += DF_STATE.templatesByName.get(TemplateType.PROCESS).get(name).size();
                 }
 
                 context.getSource().sendFeedback(Text.literal("\n#EVENTS = " + numEvents));
@@ -308,8 +308,8 @@ public class TCClient implements ClientModInitializer {
             }
         });
         ClientChunkEvents.CHUNK_LOAD.register((clientWorld, worldChunk) -> {
-            loadedChunks.put(worldChunk.getPos(),worldChunk);
-            TCClient.fireChunkLoadReceivers(worldChunk.getPos());
+//            loadedChunks.put(worldChunk.getPos(),worldChunk);
+//            TCClient.fireChunkLoadReceivers(worldChunk.getPos());
         });
         ClientChunkEvents.CHUNK_UNLOAD.register((clientWorld, worldChunk) -> {
             loadedChunks.remove(worldChunk.getPos());
@@ -320,7 +320,12 @@ public class TCClient implements ClientModInitializer {
     }
 
     public static boolean isChunkLoaded(ChunkPos chunkPos) {
-        return loadedChunks.containsKey(chunkPos);
+//        return loadedChunks.containsKey(chunkPos);
+        return MCI.world.isPosLoaded(new BlockPos(
+            chunkPos.x*16,
+            0,
+            chunkPos.z*16
+        ));
     }
     public static boolean isChunkLoaded(BlockPos blockPos) {
         return isChunkLoaded(new ChunkPos(blockPos));

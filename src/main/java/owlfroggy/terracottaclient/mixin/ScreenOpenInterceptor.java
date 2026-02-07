@@ -2,7 +2,6 @@ package owlfroggy.terracottaclient.mixin;
 
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.network.packet.c2s.play.CloseHandledScreenC2SPacket;
-import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.OpenScreenS2CPacket;
 import net.minecraft.screen.ScreenHandlerType;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,7 +17,7 @@ public class ScreenOpenInterceptor {
         // the code editor sometimes accidentally opens the event selection menu
         // this prevents that from showing up
         if (
-            TCClient.CODESPACE_MANAGER.isEditingCode()
+            TCClient.CODE_EDIT_MANAGER.isEditingCode()
             && packet.getScreenHandlerType().equals(ScreenHandlerType.GENERIC_9X5)
             && (
                 packet.getName().getString().equals("Player Event Categories")

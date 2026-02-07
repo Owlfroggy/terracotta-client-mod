@@ -1,4 +1,4 @@
-package owlfroggy.terracottaclient.codespacemanager;
+package owlfroggy.terracottaclient.codespace;
 
 import java.util.HashMap;
 

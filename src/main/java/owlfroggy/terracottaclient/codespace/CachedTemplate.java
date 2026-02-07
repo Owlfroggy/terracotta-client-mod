@@ -1,6 +1,5 @@
-package owlfroggy.terracottaclient.codespacemanager;
+package owlfroggy.terracottaclient.codespace;
 
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 
 public class CachedTemplate {

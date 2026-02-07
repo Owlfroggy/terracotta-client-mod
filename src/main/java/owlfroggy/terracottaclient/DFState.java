@@ -1,18 +1,23 @@
 package owlfroggy.terracottaclient;
 
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.scoreboard.Team;
+import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
+import net.minecraft.registry.Registries;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
@@ -24,6 +29,7 @@ import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.impl.ChangeModeA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.ChangeModeC2AResponse;
 import owlfroggy.terracottaclient.api.message.impl.PlotChangedC2ANotification;
+import owlfroggy.terracottaclient.codespace.*;
 import owlfroggy.terracottaclient.gameinterface.*;
 
 import java.util.*;
@@ -40,7 +46,9 @@ implements
     InvChangeReceiver,
     TeleportReceiver,
     ClientCommandReceiver,
-    TickEndReceiver
+    TickEndReceiver,
+    PlotChangeReceiver,
+    ChunkReceiver
 {
     public enum Mode {
         SPAWN,
@@ -79,6 +87,13 @@ implements
         PlotType.LARGE, 20,
         PlotType.MASSIVE, 20,
         PlotType.MEGA, 300
+    ));
+    private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
+        "PLAYER EVENT", TemplateType.PLAYER_EVENT,
+        "ENTITY EVENT", TemplateType.ENTITY_EVENT,
+        "GAME EVENT", TemplateType.GAME_EVENT,
+        "FUNCTION", TemplateType.FUNCTION,
+        "PROCESS", TemplateType.PROCESS
     ));
     private static final Pattern MODE_REGEX = Pattern.compile("You are currently (?:at )?(\\w+)");
     private static final Pattern PLOT_REGEX = Pattern.compile("^→ (.+) \\[(\\d+)");
@@ -122,6 +137,20 @@ implements
     public boolean modeRefreshQueued = false;
     public boolean plotScanActive = false;
 
+    public final HashMap<Vec3i, CachedTemplate> templatesByLocation = new HashMap<>();
+    public final HashMap<TemplateType, HashMap<String, ArrayList<CachedTemplate>>> templatesByName = new HashMap<>(Map.of(
+        TemplateType.PLAYER_EVENT, new HashMap<>(),
+        TemplateType.ENTITY_EVENT, new HashMap<>(),
+        TemplateType.GAME_EVENT, new HashMap<>(),
+        TemplateType.FUNCTION, new HashMap<>(),
+        TemplateType.PROCESS, new HashMap<>()
+    ));
+    public final HashMap<java.lang.Integer, CodespaceFloor> floors = new HashMap<>();
+
+    private final LinkedList<BlockPos> queuedBlockRescans = new LinkedList<>();
+    private final LinkedList<ChunkPos> queuedChunkRescans = new LinkedList<>();
+    private ChunkPos nextChunkToScan = null;
+
     private Rank rank = null;
     public Rank getRank() { return rank != null ? rank : Rank.NON; }
 
@@ -157,6 +186,145 @@ implements
 
     public boolean hasRank(Rank r) {
         return getRank().ordinal() >= r.ordinal();
+    }
+
+    public CodespaceFloor getFloor(int yLevel) {
+        if (floors.containsKey(yLevel)) {
+            return floors.get(yLevel);
+        } else {
+            CodespaceFloor floor = new CodespaceFloor(yLevel);
+            floors.put(yLevel, floor);
+            return floor;
+        }
+    }
+
+    public ArrayList<CachedTemplate> getTemplatesByName(TemplateType type, String name) {
+        return templatesByName.get(type).get(name);
+    }
+
+    /**
+     * returns null if the template is not in the cache
+     * if there are multiple templates with the same identifier, returns the one at `index`
+     */
+    public CachedTemplate getTemplateByIdentifier(TemplateIdentifier id, int index) {
+        ArrayList<CachedTemplate> templates = templatesByName.get(id.type()).get(id.name());
+        if (templates == null) return null;
+
+        return templates.get(index);
+    }
+    /**
+     * returns null if the template is not in the cache
+     * if there are multiple templates with the same identifier, returns the first one in the ArrayList
+     */
+    public CachedTemplate getTemplateByIdentifier(TemplateIdentifier id) {
+        return getTemplateByIdentifier(id, 0);
+    }
+
+    private void addTemplate(TemplateType type, String name, Vec3i plotSpacePos) {
+        CachedTemplate template = new CachedTemplate(type,name,plotSpacePos);
+
+        if (templatesByLocation.containsKey(plotSpacePos))
+            throw new RuntimeException("Failed to add template "+template.toString()+" because its location is already occupied by "+templatesByLocation.get(plotSpacePos));
+        templatesByLocation.put(plotSpacePos,template);
+
+        if (!templatesByName.get(type).containsKey(name))
+            templatesByName.get(type).put(name,new ArrayList<>());
+        templatesByName.get(type).get(name).add(template);
+
+        getFloor(plotSpacePos.getY()).getRow(plotSpacePos.getX()).addTemplate(template);
+    }
+
+    private void removeTemplate(CachedTemplate template) {
+        templatesByLocation.remove(template.plotSpacePos);
+
+        templatesByName.get(template.id.type()).get(template.id.name()).remove(template);
+        if (templatesByName.get(template.id.type()).get(template.id.name()).isEmpty())
+            templatesByName.get(template.id.type()).remove(template.id.name());
+
+        CodespaceFloor floor = getFloor(template.plotSpacePos.getY());
+        CodespaceRow row = floor.getRow(template.plotSpacePos.getX());
+        row.removeTemplate(template);
+    }
+
+    private void clearTemplates() {
+        templatesByLocation.clear();
+        for (HashMap<String,ArrayList<CachedTemplate>> templateMap : templatesByName.values()) {
+            templateMap.clear();
+        }
+        floors.clear();
+    }
+
+    /**
+     * @param blockPos in WORLD SPACE!!
+     */
+    public void processBlockTemplate(BlockPos blockPos) {
+        if (TCClient.MCI.world == null) return;
+
+        //remove old template at this block
+        Vec3i templatePos = TCClient.DF_STATE.toPlotSpace(blockPos).add(1,0,0);
+        if (templatesByLocation.containsKey(templatePos))
+            removeTemplate(templatesByLocation.get(templatePos));
+
+
+        // check if this block is a sign
+        BlockState signBlockState = TCClient.MCI.world.getBlockState(blockPos);
+        Identifier signBlockId = Registries.BLOCK.getId(signBlockState.getBlock());
+        if (!signBlockId.equals(Identifier.ofVanilla("oak_wall_sign"))) return;
+        BlockEntity blockEntity = TCClient.MCI.world.getBlockEntity(blockPos);
+        if (blockEntity instanceof SignBlockEntity sign) {
+            // check if this is a header
+            Text topLine = sign.getFrontText().getMessage(0,false);
+            if (!NAMES_TO_TEMPLATE_TYPES.containsKey(topLine.getString())) return;
+            if (!TCClient.DF_STATE.isWorldPosInCodespace(blockPos)) return;
+            TemplateType templateType = NAMES_TO_TEMPLATE_TYPES.get(topLine.getString());
+
+            // add template
+            String templateName = sign.getFrontText().getMessage(1,false).getString();
+            addTemplate(templateType, templateName, templatePos);
+        };
+    }
+
+    public void processChunkTemplates(ChunkPos chunkPos) {
+        int chunkX = chunkPos.x;
+        int chunkZ = chunkPos.z;
+
+        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+        if (plotOrigin == null) return;
+        if (!TCClient.isChunkLoaded(chunkPos)) return;;
+
+        if (queuedChunkRescans.contains(chunkPos)) {
+            queuedChunkRescans.remove(chunkPos);
+            // scanning progres report
+            TCClient.MCI.player.sendMessage(
+                Text.of(
+                   " Scanning codespace: " + (int)(100-(double)queuedChunkRescans.size()/TCClient.DF_STATE.getTotalCodespaceChunks()*100) + "%"
+                ), true
+            );
+        }
+
+        //dont scan chunk if it doesnt touch the codespace
+        if (!(
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16,0,chunkZ*16)) ||
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16+15,0,chunkZ*16)) ||
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16,0,chunkZ*16+15)) ||
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16+15,0,chunkZ*16+15))
+        )) {
+            return;
+        }
+
+        for (int floor = 1; floor <= 50; floor++) {
+            int y = floor*5;
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    BlockPos blockPos = new BlockPos(chunkX*16+x, y, chunkZ*16+z);
+                    processBlockTemplate(blockPos);
+                }
+            }
+        }
+    }
+
+    public void queueChunkForScan(ChunkPos chunkPos) {
+        queuedChunkRescans.add(chunkPos);
     }
 
     public Vec3d getPlotCorner(CodespaceCorner corner){
@@ -220,7 +388,6 @@ implements
      * Updates plot bounds, size, and code contents
      */
     public void scanPlot() {
-        plotScanActive = false;
         if (plotScanActive) {return;}
         plotScanActive = true;
 
@@ -232,29 +399,32 @@ implements
 
                 plotScanTargetPos.set(null);
                 doesHaveUndergroundCodespace = false;
+                clearTemplates();
 
                 // get plot origin
                 // tries teleporting to x -1 so that plots without a buildspace (worldplots) still work
                 ptpFuture = new CompletableFuture<>();
-                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0",TP_MAGIC_Y_VALUE));
+                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0", TP_MAGIC_Y_VALUE));
                 try {
                     Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
-                    if (result.isEmpty()) { throw new RuntimeException("Failed to get plot origin"); }
-                    plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0,0.0,0.0);
+                    if (result.isEmpty()) {
+                        throw new RuntimeException("Failed to get plot origin");
+                    }
+                    plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
                 } catch (Exception e) {
-                    TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})",e.toString());
+                    TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})", e.toString());
                     plotScanActive = false;
                     return;
                 }
 
                 // test for underground codespace
                 ptpFuture = new CompletableFuture<>();
-                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4",TP_MAGIC_Y_VALUE_UNDERGROUND));
+                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4", TP_MAGIC_Y_VALUE_UNDERGROUND));
                 try {
                     Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
                     if (result.isPresent()) doesHaveUndergroundCodespace = true;
                 } catch (Exception e) {
-                    TCClient.LOGGER.warn("Plot scan failed during underground codespace check due to not receiving a teleport response ({})",e.toString());
+                    TCClient.LOGGER.warn("Plot scan failed during underground codespace check due to not receiving a teleport response ({})", e.toString());
                     plotScanActive = false;
                     return;
                 }
@@ -263,9 +433,9 @@ implements
                 sizeGuessLoop: while (getMode() == Mode.DEV) {
                     Vec3d plotSpacePos;
                     switch (currentSizeGuess) {
-                        case PlotType.BASIC -> plotSpacePos = new Vec3d(-1,TP_MAGIC_Y_VALUE,51);
-                        case PlotType.LARGE -> plotSpacePos = new Vec3d(-1,TP_MAGIC_Y_VALUE,101);
-                        case PlotType.MASSIVE -> plotSpacePos = new Vec3d(-300,TP_MAGIC_Y_VALUE,1);
+                        case PlotType.BASIC -> plotSpacePos = new Vec3d(-1, TP_MAGIC_Y_VALUE, 51);
+                        case PlotType.LARGE -> plotSpacePos = new Vec3d(-1, TP_MAGIC_Y_VALUE, 101);
+                        case PlotType.MASSIVE -> plotSpacePos = new Vec3d(-300, TP_MAGIC_Y_VALUE, 1);
                         default -> {
                             break sizeGuessLoop;
                         }
@@ -288,7 +458,7 @@ implements
                     if (teleportResult.isEmpty()) {
                         break;
                     } else {
-                        currentSizeGuess = PlotType.values()[currentSizeGuess.ordinal()+1];
+                        currentSizeGuess = PlotType.values()[currentSizeGuess.ordinal() + 1];
                     }
                 }
 
@@ -298,30 +468,34 @@ implements
                 Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
                 Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
 
-                int minusCornerChunkX = (int)(minusCorner.x/16);
-                int minusCornerChunkZ = (int)(minusCorner.z/16);
-                int plusCornerChunkX = (int)(plusCorner.x/16);
-                int plusCornerChunkZ = (int)(plusCorner.z/16);
+                int minusCornerChunkX = (int) Math.floor(minusCorner.x / 16);
+                int minusCornerChunkZ = (int) Math.floor(minusCorner.z / 16);
+                int plusCornerChunkX = (int) Math.floor(plusCorner.x / 16);
+                int plusCornerChunkZ = (int) Math.floor(plusCorner.z / 16);
 
                 // queue every chunk in the codespace for a rescan
                 totalCodespaceChunks = 0;
-                for (int cx = minusCornerChunkX; cx <= plusCornerChunkX; cx++){
-                    for (int cz = minusCornerChunkZ; cz <= plusCornerChunkZ; cz++) {
-                        TCClient.CODESPACE_MANAGER.queueChunkForScan(new ChunkPos(cx,cz));
+                queuedChunkRescans.clear();
+                boolean reverseZ = false;
+                for (int cx = minusCornerChunkX; cx <= plusCornerChunkX; cx++) {
+                    for (
+                        int cz = (reverseZ ? plusCornerChunkZ : minusCornerChunkZ);
+                        reverseZ ? (cz >= minusCornerChunkZ) : (cz <= plusCornerChunkZ);
+                        cz += (reverseZ ? -1 : 1)
+                    ) {
+                        queueChunkForScan(new ChunkPos(cx, cz));
                         totalCodespaceChunks++;
                     }
-                }
-
-                for (ChunkPos chunkPos : TCClient.loadedChunks.keySet().stream().toList()) {
-                    if (chunkPos == null) continue;
-                    TCClient.CODESPACE_MANAGER.scanChunk(chunkPos);
+                    reverseZ = !reverseZ;
                 }
 
                 TCClient.safeMessage(Text.literal("Detected plot size:" + currentSizeGuess));
                 TCClient.safeMessage(Text.literal("Detected plot origin:" + plotOrigin));
                 plotScanActive = false;
             } catch (Exception e) {
-                TCClient.LOGGER.error("Error while scanning plot",e);
+                plotScanActive = false;
+                queuedChunkRescans.clear();
+                TCClient.LOGGER.error("Error while scanning plot", e);
             }
         });
     }
@@ -507,10 +681,76 @@ implements
 
     public void onTickEnd(MinecraftClient client) {
         t++;
-        // figure out rank
+        //=- figure out rank -=\\
         if (rank == null && t % 20 == 0 && !hideNextWhois && mode != Mode.PLAY && !TCClient.loadedChunks.isEmpty()) {
             hideNextWhois = true;
             TCClient.COMMAND_MANAGER.queueCommand("whois");
         }
+
+        //=- codespace scanning -=\\
+        // scan queued blocks
+        while (!queuedBlockRescans.isEmpty()) {
+            BlockPos next = queuedBlockRescans.poll();
+            if (next == null) {continue;}
+            processBlockTemplate(next);
+        }
+
+        // rescan queued chunks if they are loaded
+        for (ChunkPos chunkPos : new ArrayList<>(queuedChunkRescans)) {
+            if (TCClient.isChunkLoaded(chunkPos)) processChunkTemplates(chunkPos);
+        }
+
+        // move to chunks if they need to be scanned
+        if (
+            !TCClient.MOVEMENT_MANAGER.isMoving() &&
+            !queuedChunkRescans.isEmpty() &&
+            (nextChunkToScan == null || !TCClient.MOVEMENT_MANAGER.getCurrentMovementId().equals("SCAN_QUEUED_CHUNK"))
+        ) {
+            nextChunkToScan = queuedChunkRescans.peek();
+
+            TCClient.MOVEMENT_MANAGER.setMovementDestination(
+                TCClient.DF_STATE.toPlotSpace(
+                    TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3d(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
+                ),
+                "SCAN_QUEUED_CHUNK"
+            );
+        }
+
+        if (nextChunkToScan != null && !queuedChunkRescans.contains(nextChunkToScan)) {
+            nextChunkToScan = null;
+            TCClient.MOVEMENT_MANAGER.stopMovement("SCAN_QUEUED_CHUNK");
+        }
+    }
+
+    @Override
+    public void onPlotChanged(int plotId, DFState.Mode mode) {
+        clearTemplates();
+        queuedChunkRescans.clear();
+        queuedBlockRescans.clear();
+    }
+
+    @Override
+    public void onChunkLoad(ChunkPos chunkPos) {
+        if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) return;
+        processChunkTemplates(chunkPos);
+    }
+
+    @Override
+    public void onChunkDelta(ChunkDeltaUpdateS2CPacket packet) {
+        packet.visitUpdates((blockPos, blockState) -> {
+            Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+            if (plotOrigin == null) return;
+
+            // rescanning
+            BlockPos immutablePos = blockPos.toImmutable();
+            queuedBlockRescans.add(immutablePos);
+        });
+    }
+
+    @Override
+    public void onBlockEntityUpdate(BlockEntityUpdateS2CPacket packet) {
+        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+        if (plotOrigin == null) return;
+        queuedBlockRescans.add(packet.getPos().toImmutable());
     }
 }
