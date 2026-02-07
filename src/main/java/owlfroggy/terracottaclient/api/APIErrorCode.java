@@ -14,6 +14,9 @@ public enum APIErrorCode {
     NOT_IN_DEV,
     AT_SPAWN,
 
+    SCAN_IN_PROGRESS,
+    SCAN_FAILED,
+
     EDIT_IN_PROGRESS,
     EDIT_FAILED,
 

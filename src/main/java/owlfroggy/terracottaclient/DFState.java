@@ -26,10 +26,7 @@ import owlfroggy.terracottaclient.api.APIErrorCode;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.ErrorResponse;
 import owlfroggy.terracottaclient.api.message.Request;
-import owlfroggy.terracottaclient.api.message.impl.ChangeModeA2CRequest;
-import owlfroggy.terracottaclient.api.message.impl.ChangeModeC2AResponse;
-import owlfroggy.terracottaclient.api.message.impl.PlotChangedC2ANotification;
-import owlfroggy.terracottaclient.api.message.impl.ScanStateChangedC2ANotification;
+import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.codespace.*;
 import owlfroggy.terracottaclient.gameinterface.*;
 
@@ -427,9 +424,7 @@ implements
                     }
                     plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
                 } catch (Exception e) {
-                    TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})", e.toString());
-                    setScanState(ScanState.NOT_SCANNED);
-                    return;
+                    throw new RuntimeException("Plot scan failed during origin fetch due to not receiving a teleport response");
                 }
 
                 // test for underground codespace
@@ -439,9 +434,7 @@ implements
                     Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
                     if (result.isPresent()) doesHaveUndergroundCodespace = true;
                 } catch (Exception e) {
-                    TCClient.LOGGER.warn("Plot scan failed during underground codespace check due to not receiving a teleport response ({})", e.toString());
-                    setScanState(ScanState.NOT_SCANNED);
-                    return;
+                    throw new RuntimeException("Plot scan failed during underground codespace check due to not receiving a teleport response");
                 }
 
                 // get plot size
@@ -464,9 +457,7 @@ implements
                     try {
                         teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
                     } catch (Exception e) {
-                        TCClient.LOGGER.warn("Plot scan failed during size fetch due to not receiving a teleport response ({})", e.toString());
-                        setScanState(ScanState.NOT_SCANNED);
-                        return;
+                        throw new RuntimeException("Plot scan failed during size fetch due to not receiving a teleport response");
                     }
 
                     // if teleport target was out of bounds, the plot size has been found
@@ -508,11 +499,24 @@ implements
                 TCClient.safeMessage(Text.literal("Detected plot origin:" + plotOrigin));
                 setScanState(ScanState.SCANNING_CODE);
             } catch (Exception e) {
-                setScanState(ScanState.NOT_SCANNED);
-                queuedChunkRescans.clear();
-                TCClient.LOGGER.error("Error while scanning plot", e);
+                failScan(e);
             }
         });
+    }
+
+    private void failScan(String errorMessage) {
+        setScanState(ScanState.NOT_SCANNED);
+        queuedChunkRescans.clear();
+        APIServer.resolvePendingRequests(request -> {
+            if (request instanceof RescanPlotA2CRequest r) {
+                return new ErrorResponse(APIErrorCode.SCAN_FAILED, errorMessage);
+            }
+            return null;
+        });
+    }
+    private void failScan(Exception error) {
+        TCClient.LOGGER.error("Error while scanning plot", error);
+        failScan(error.getMessage());
     }
 
     public Vec3d toPlotSpace(Vec3d worldSpacePos) {
@@ -737,7 +741,14 @@ implements
         }
 
         if (nextChunkToScan == null && queuedChunkRescans.isEmpty() && scanState == ScanState.SCANNING_CODE) {
+            TCClient.safeMessage(Text.literal("Plot scan complete!"));
             setScanState(ScanState.SCANNED);
+            APIServer.resolvePendingRequests(request -> {
+                if (request instanceof RescanPlotA2CRequest r) {
+                    return new RescanPlotC2AResponse();
+                }
+                return null;
+            });
         }
     }
 
@@ -746,7 +757,9 @@ implements
         clearTemplates();
         queuedChunkRescans.clear();
         queuedBlockRescans.clear();
-        setScanState(ScanState.NOT_SCANNED);
+        if (isScanning()) {
+            failScan("Plot was left mid-scan.");
+        }
     }
 
     @Override

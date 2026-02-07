@@ -199,6 +199,7 @@ public class APIServer extends WebSocketServer {
                     case "RENDER_ITEM" -> RenderItemA2CRequest::parse;
                     case "GIVE_ITEM" -> GiveItemA2CRequest::parse;
                     case "GET_INVENTORY" -> GetInventoryA2CRequest::parse;
+                    case "RESCAN_PLOT" -> RescanPlotA2CRequest::parse;
                     default -> throw new MessageParsingException("Invalid request method", reducedRequest);
                 });
                 try {

@@ -11,4 +11,5 @@ public enum RequestMethod {
     RENDER_ITEM,
     GIVE_ITEM,
     GET_INVENTORY,
+    RESCAN_PLOT,
 }

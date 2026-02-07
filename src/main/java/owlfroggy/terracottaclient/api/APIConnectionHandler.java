@@ -228,6 +228,16 @@ public class APIConnectionHandler {
                 respond(r, new ErrorResponse(APIErrorCode.GENERIC_ERROR, "Item could not be rendered: " + e));
             }
         }
+        else if (request instanceof RescanPlotA2CRequest r) {
+            if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) {
+                respond(r, new ErrorResponse(APIErrorCode.NOT_IN_DEV, "Plot can only be scanned in dev mode."));
+            } else if (TCClient.DF_STATE.isScanning()) {
+                respond(r, new ErrorResponse(APIErrorCode.SCAN_IN_PROGRESS, "Plot is already being scanned."));
+            } else {
+                TCClient.API_SERVER.setRequestAsPending(r, this);
+                TCClient.DF_STATE.scanPlot();
+            }
+        }
     }
 
 
