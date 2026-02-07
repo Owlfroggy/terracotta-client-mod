@@ -54,6 +54,7 @@ public class APIConnectionHandler {
     private void sendInitialState() {
         sendNotification(new ModeChangedC2ANotification(TCClient.DF_STATE.getMode()));
         sendNotification(new PlotChangedC2ANotification(TCClient.DF_STATE.getPlotId(),TCClient.DF_STATE.getPlotName()));
+        sendNotification(new ScanStateChangedC2ANotification(TCClient.DF_STATE.getScanState()));
     }
 
     protected void respond(Request request, Response response) {

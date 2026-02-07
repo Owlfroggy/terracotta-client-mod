@@ -5,17 +5,17 @@ import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.api.NotificationMethod;
 import owlfroggy.terracottaclient.api.message.Notification;
 
-public class PlotScannedChangedC2ANotification extends Notification {
-    private final boolean isScanned;
+public class ScanStateChangedC2ANotification extends Notification {
+    private final DFState.ScanState scanState;
 
-    public PlotScannedChangedC2ANotification(boolean isScanned) {
-        super(NotificationMethod.PLOT_SCANNED_CHANGED);
-        this.isScanned = isScanned;
+    public ScanStateChangedC2ANotification(DFState.ScanState scanState) {
+        super(NotificationMethod.SCAN_STATE_CHANGED);
+        this.scanState = scanState;
     }
 
     @Override
     protected void buildOn(JsonObject out, JsonObject data) {
         super.buildOn(out, data);
-        data.addProperty("is_scanned",isScanned);
+        data.addProperty("scan_state",scanState.name());
     }
 }

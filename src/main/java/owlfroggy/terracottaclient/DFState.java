@@ -29,6 +29,7 @@ import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.api.message.impl.ChangeModeA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.ChangeModeC2AResponse;
 import owlfroggy.terracottaclient.api.message.impl.PlotChangedC2ANotification;
+import owlfroggy.terracottaclient.api.message.impl.ScanStateChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.*;
 import owlfroggy.terracottaclient.gameinterface.*;
 
@@ -157,6 +158,10 @@ implements
     private ChunkPos nextChunkToScan = null;
 
     private ScanState scanState = ScanState.NOT_SCANNED;
+    public void setScanState(ScanState newState) {
+        scanState = newState;
+        APIServer.broadcastNotification(new ScanStateChangedC2ANotification(newState));
+    }
     public ScanState getScanState() { return scanState; }
     public boolean isScanning() { return scanState == ScanState.SCANNING_BOUNDS || scanState == ScanState.SCANNING_CODE; }
     public boolean isScanned() { return scanState == ScanState.SCANNED; }
@@ -399,7 +404,7 @@ implements
      */
     public void scanPlot() {
         if (isScanning()) {return;}
-        scanState = ScanState.SCANNING_BOUNDS;
+        setScanState(ScanState.SCANNING_BOUNDS);
 
         CompletableFuture.runAsync(() -> {
             try {
@@ -423,7 +428,7 @@ implements
                     plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
                 } catch (Exception e) {
                     TCClient.LOGGER.warn("Plot scan failed during origin fetch due to not receiving a teleport response ({})", e.toString());
-                    scanState = ScanState.NOT_SCANNED;
+                    setScanState(ScanState.NOT_SCANNED);
                     return;
                 }
 
@@ -435,7 +440,7 @@ implements
                     if (result.isPresent()) doesHaveUndergroundCodespace = true;
                 } catch (Exception e) {
                     TCClient.LOGGER.warn("Plot scan failed during underground codespace check due to not receiving a teleport response ({})", e.toString());
-                    scanState = ScanState.NOT_SCANNED;
+                    setScanState(ScanState.NOT_SCANNED);
                     return;
                 }
 
@@ -460,7 +465,7 @@ implements
                         teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
                     } catch (Exception e) {
                         TCClient.LOGGER.warn("Plot scan failed during size fetch due to not receiving a teleport response ({})", e.toString());
-                        scanState = ScanState.NOT_SCANNED;
+                        setScanState(ScanState.NOT_SCANNED);
                         return;
                     }
 
@@ -501,9 +506,9 @@ implements
 
                 TCClient.safeMessage(Text.literal("Detected plot size:" + currentSizeGuess));
                 TCClient.safeMessage(Text.literal("Detected plot origin:" + plotOrigin));
-                scanState = ScanState.SCANNING_CODE;
+                setScanState(ScanState.SCANNING_CODE);
             } catch (Exception e) {
-                scanState = ScanState.NOT_SCANNED;
+                setScanState(ScanState.NOT_SCANNED);
                 queuedChunkRescans.clear();
                 TCClient.LOGGER.error("Error while scanning plot", e);
             }
@@ -732,7 +737,7 @@ implements
         }
 
         if (nextChunkToScan == null && queuedChunkRescans.isEmpty() && scanState == ScanState.SCANNING_CODE) {
-            scanState = ScanState.SCANNED;
+            setScanState(ScanState.SCANNED);
         }
     }
 
@@ -741,7 +746,7 @@ implements
         clearTemplates();
         queuedChunkRescans.clear();
         queuedBlockRescans.clear();
-        scanState = ScanState.NOT_SCANNED;
+        setScanState(ScanState.NOT_SCANNED);
     }
 
     @Override
