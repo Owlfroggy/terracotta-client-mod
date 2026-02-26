@@ -1,17 +1,24 @@
 package owlfroggy.terracottaclient.api.message;
 
 import com.google.gson.JsonObject;
+import owlfroggy.terracottaclient.api.Permission;
 
 public class Message {
     private MessageType type;
+    private Permission requiredPermission = null;
     private int id = -1;
 
     public MessageType getType() { return type; }
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
-    public Message(MessageType type) {
+    public Message(MessageType type, Permission requiredPermission) {
         this.type = type;
+        this.requiredPermission = requiredPermission;
+    }
+
+    public Permission getRequiredPermission() {
+        return requiredPermission;
     }
 
     public String serialize() {

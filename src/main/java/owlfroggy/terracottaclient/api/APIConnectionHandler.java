@@ -9,15 +9,13 @@ import org.java_websocket.handshake.ClientHandshake;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.Utils;
-import owlfroggy.terracottaclient.api.message.ErrorResponse;
-import owlfroggy.terracottaclient.api.message.Notification;
-import owlfroggy.terracottaclient.api.message.Request;
-import owlfroggy.terracottaclient.api.message.Response;
+import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 public class APIConnectionHandler {
     private final char[] TOKEN_CHARACTERS = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9'};
@@ -33,7 +31,7 @@ public class APIConnectionHandler {
     private String appName = "<uninitialized app>";
     private APIToken token = null;
     private Request authenticationRequest = null;
-    private HashSet<Permission> permissions;
+    private Set<Permission> permissions = new HashSet<>();
 
     APIConnectionHandler(WebSocket connection, ClientHandshake handshake, int id) {
         this.id = id;
@@ -61,6 +59,14 @@ public class APIConnectionHandler {
         response.setId(request.getId());
         String json = response.serialize();
         connection.send(json);
+    }
+
+    /**
+     * @return Returns true if the permission check passed, false if the required permission is not present
+     */
+    protected boolean hasRequiredPermission(Permission requiredPermission) {
+        if (requiredPermission == null) return true;
+        return permissions.contains(requiredPermission);
     }
 
     public int getId() {
@@ -97,6 +103,11 @@ public class APIConnectionHandler {
     }
 
     public void onRequest(Request request) {
+        if (!hasRequiredPermission(request.getRequiredPermission())) {
+            respond(request, new ErrorResponse(APIErrorCode.NO_PERMISSION, "Required permission " + request.getRequiredPermission().name() + " is missing."));
+            return;
+        }
+
         if (request instanceof RequestTokenA2CRequest r) {
             if (appName.equals("<uninitialized app>")) appName = r.getAppName();
             if (token != null) {
@@ -129,6 +140,8 @@ public class APIConnectionHandler {
                 TCClient.safeMessage(Text.literal(
                     "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
                 ));
+                this.token = token;
+                this.permissions = token.getPermissions();
                 respond(r, new ProvideTokenC2AResponse());
                 sendInitialState();
             }
@@ -241,12 +254,14 @@ public class APIConnectionHandler {
     }
 
 
-    public void sendNotification(String serializedNotification) {
+    public void sendNotification(String serializedNotification, Permission requiredPermission) {
+        TCClient.LOGGER.warn("{} {} [{}]", requiredPermission, hasRequiredPermission(requiredPermission), String.join(", ",permissions.stream().map(Enum::toString).toList()));
+        if (!hasRequiredPermission(requiredPermission)) return;
         TCClient.LOGGER.info("sending notif {}",serializedNotification);
         connection.send(serializedNotification);
     }
     public void sendNotification(Notification notification) {
         if (notification.getId() == -1) notification.setId(TCClient.API_SERVER.getNewNotificationId());
-        sendNotification(notification.serialize());
+        sendNotification(notification.serialize(), notification.getRequiredPermission());
     }
 }

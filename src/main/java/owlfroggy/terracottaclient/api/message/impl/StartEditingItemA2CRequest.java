@@ -1,6 +1,7 @@
 package owlfroggy.terracottaclient.api.message.impl;
 
 import com.google.gson.JsonObject;
+import owlfroggy.terracottaclient.api.Permission;
 import owlfroggy.terracottaclient.api.RequestMethod;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
@@ -16,7 +17,7 @@ public class StartEditingItemA2CRequest extends Request {
     public int getItemDataVersion() { return itemDataVersion; }
 
     public StartEditingItemA2CRequest(ItemLibraryManager.ItemId itemId, String snbt, int itemDataVersion) {
-        super(RequestMethod.START_EDITING_ITEM);
+        super(RequestMethod.START_EDITING_ITEM, Permission.EDIT_LIBRARY_ITEMS);
         this.itemId = itemId;
         this.snbt = snbt;
         this.itemDataVersion = itemDataVersion;

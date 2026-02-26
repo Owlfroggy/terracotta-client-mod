@@ -1,6 +1,7 @@
 package owlfroggy.terracottaclient.api.message.impl;
 
 import com.google.gson.JsonObject;
+import owlfroggy.terracottaclient.api.Permission;
 import owlfroggy.terracottaclient.api.RequestMethod;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
@@ -10,7 +11,7 @@ public class StopEditingItemA2CRequest extends Request {
     public ItemLibraryManager.ItemId getItemId() { return itemId; }
 
     public StopEditingItemA2CRequest(ItemLibraryManager.ItemId itemId) {
-        super(RequestMethod.STOP_EDITING_ITEM);
+        super(RequestMethod.STOP_EDITING_ITEM, Permission.EDIT_LIBRARY_ITEMS);
         this.itemId = itemId;
     }
 

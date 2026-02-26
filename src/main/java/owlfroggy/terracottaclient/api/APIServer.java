@@ -93,7 +93,7 @@ public class APIServer extends WebSocketServer {
         notification.setId(TCClient.API_SERVER.getNewNotificationId());
         String serialized = notification.serialize();
         for (APIConnectionHandler handler : TCClient.API_SERVER.connectedAppsBySocket.values()) {
-            handler.sendNotification(serialized);
+            handler.sendNotification(serialized, notification.getRequiredPermission());
         }
     }
 
@@ -161,7 +161,7 @@ public class APIServer extends WebSocketServer {
         if (tokens.containsKey(tokenString)) return tokens.get(tokenString);
         return null;
     }
-    public APIToken registerNewToken(String tokenString, String appName, HashSet<Permission> permissions) {
+    public APIToken registerNewToken(String tokenString, String appName, Set<Permission> permissions) {
         APIToken token = new APIToken(tokenString,appName,permissions,Instant.now().getEpochSecond());
         tokens.put(tokenString,token);
         writeTokensToFile();

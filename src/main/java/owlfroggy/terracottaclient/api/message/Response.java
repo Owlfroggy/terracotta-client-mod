@@ -7,7 +7,7 @@ public class Response extends Message {
     boolean success = true;
 
     public Response() {
-        super(MessageType.RESPONSE);
+        super(MessageType.RESPONSE, null);
     }
 
     @Override

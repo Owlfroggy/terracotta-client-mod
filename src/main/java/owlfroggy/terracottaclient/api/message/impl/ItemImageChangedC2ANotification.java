@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.item.ItemStack;
 import owlfroggy.terracottaclient.Utils;
 import owlfroggy.terracottaclient.api.NotificationMethod;
+import owlfroggy.terracottaclient.api.Permission;
 import owlfroggy.terracottaclient.api.message.Notification;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
@@ -12,7 +13,7 @@ public class ItemImageChangedC2ANotification extends Notification {
     private String image;
 
     public ItemImageChangedC2ANotification(ItemLibraryManager.ItemId itemId, String image) {
-        super(NotificationMethod.ITEM_IMAGE_CHANGED);
+        super(NotificationMethod.ITEM_IMAGE_CHANGED, Permission.EDIT_LIBRARY_ITEMS);
         this.itemId = itemId;
         this.image = image;
     }

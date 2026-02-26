@@ -2,6 +2,7 @@ package owlfroggy.terracottaclient.api.message.impl;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import owlfroggy.terracottaclient.api.Permission;
 import owlfroggy.terracottaclient.api.RequestMethod;
 import owlfroggy.terracottaclient.api.message.Request;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
@@ -15,7 +16,7 @@ public class InitiateCodeEditA2CRequest extends Request {
     public TemplateIdentifier[] getBreakTemplates() { return breakTemplates; }
 
     public InitiateCodeEditA2CRequest(String[] placeTemplates, TemplateIdentifier[] breakTemplates) {
-        super(RequestMethod.INITIATE_CODE_EDIT);
+        super(RequestMethod.INITIATE_CODE_EDIT, Permission.EDIT_CODE);
         this.placeTemplates = placeTemplates;
         this.breakTemplates = breakTemplates;
     }

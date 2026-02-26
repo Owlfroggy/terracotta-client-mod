@@ -3,6 +3,7 @@ package owlfroggy.terracottaclient.api.message.impl;
 import com.google.gson.JsonObject;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.api.NotificationMethod;
+import owlfroggy.terracottaclient.api.Permission;
 import owlfroggy.terracottaclient.api.message.Notification;
 
 public class PlotChangedC2ANotification extends Notification {
@@ -10,7 +11,7 @@ public class PlotChangedC2ANotification extends Notification {
     private String plotName;
 
     public PlotChangedC2ANotification(int plotId, String plotName) {
-        super(NotificationMethod.PLOT_CHANGED);
+        super(NotificationMethod.PLOT_CHANGED, Permission.GET_PLOT_INFO);
         this.plotId = plotId;
         this.plotName = plotName;
     }
