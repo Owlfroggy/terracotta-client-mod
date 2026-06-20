@@ -12,18 +12,18 @@ import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
-import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
-import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.chunk.LevelChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import owlfroggy.terracottaclient.api.APIServer;
@@ -50,7 +50,7 @@ public class TCClient implements ClientModInitializer {
     // It is considered best practice to use your mod id as the logger's name.
     // That way, it's clear which mod wrote info, warnings, and errors.
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-    public static final MinecraftClient MCI = MinecraftClient.getInstance();
+    public static final Minecraft MCI = Minecraft.getInstance();
     public static ChatCommandManager COMMAND_MANAGER;
     public static DFState DF_STATE;
     public static MovementManager MOVEMENT_MANAGER;
@@ -69,8 +69,8 @@ public class TCClient implements ClientModInitializer {
     private static final ArrayList<ClientCommandReceiver> clientCommandReceivers = new ArrayList<>();
     private static final ArrayList<TooltipRenderer> tooltipRenderers = new ArrayList<>();
 
-    public static final HashMap<ChunkPos, WorldChunk> loadedChunks = new HashMap<>();
-    private static final List<Text> queuedChatMessages = new ArrayList<>();
+    public static final HashMap<ChunkPos, LevelChunk> loadedChunks = new HashMap<>();
+    private static final List<Component> queuedChatMessages = new ArrayList<>();
     private static boolean serverIsDiamondFire = false;
 
     private static int ticksUntilTryAPIServer = 0;
@@ -87,9 +87,9 @@ public class TCClient implements ClientModInitializer {
             if (MCI.player == null) return;
             // queued chat messages
 
-            Text[] messagesFrozen = queuedChatMessages.toArray(new Text[0]);
-            for (Text msg : messagesFrozen) {
-                MCI.player.sendMessage(msg,false);
+            Component[] messagesFrozen = queuedChatMessages.toArray(new Component[0]);
+            for (Component msg : messagesFrozen) {
+                MCI.player.displayClientMessage(msg,false);
             }
             queuedChatMessages.clear();
         });
@@ -121,7 +121,7 @@ public class TCClient implements ClientModInitializer {
                 ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
                 .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, true))
             ).executes(context -> {
-                context.getSource().sendError(Text.literal("No app id provided."));
+                context.getSource().sendError(Component.literal("No app id provided."));
                     return 0;
             }));
         });
@@ -134,7 +134,7 @@ public class TCClient implements ClientModInitializer {
                 ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
                 .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, false))
             ).executes(context -> {
-                context.getSource().sendError(Text.literal("No app id provided."));
+                context.getSource().sendError(Component.literal("No app id provided."));
                     return 0;
             }));
         });
@@ -143,7 +143,7 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommandManager
             .literal("terracotta_test")
             .executes(context -> {
-                context.getSource().sendFeedback(Text.literal(""+isOnDiamondFire()));
+                context.getSource().sendFeedback(Component.literal(""+isOnDiamondFire()));
 //                MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
                 return 1;
             }));
@@ -154,7 +154,7 @@ public class TCClient implements ClientModInitializer {
             .literal("tcclientdfstate")
             .requires(source -> isOnDiamondFire())
             .executes(context -> {
-                context.getSource().sendFeedback(Text.literal(
+                context.getSource().sendFeedback(Component.literal(
                     "=- Internal DF state -="
                     + "\nRank: " + DF_STATE.getRank()
                     + "\nMode: " + DF_STATE.getMode()
@@ -202,7 +202,7 @@ public class TCClient implements ClientModInitializer {
 //                        new TemplateIdentifier(TemplateType.FUNCTION,"globalPlrDeath"),
 //                    });
                 } catch (Exception e) {
-                    context.getSource().sendFeedback(Text.empty().formatted(Formatting.RED).append("ERROR: "+e.getMessage()));
+                    context.getSource().sendFeedback(Component.empty().withStyle(ChatFormatting.RED).append("ERROR: "+e.getMessage()));
                 }
                 return 1;
             }));
@@ -227,7 +227,7 @@ public class TCClient implements ClientModInitializer {
                         new TemplateIdentifier(TemplateType.PLAYER_EVENT, "Join")
                     });
                 } catch (Exception e) {
-                    context.getSource().sendFeedback(Text.empty().formatted(Formatting.RED).append("ERROR: "+e.getMessage()));
+                    context.getSource().sendFeedback(Component.empty().withStyle(ChatFormatting.RED).append("ERROR: "+e.getMessage()));
                 }
                 return 1;
             }));
@@ -238,12 +238,12 @@ public class TCClient implements ClientModInitializer {
             .literal("dumptemplatecache")
             .requires(source -> isOnDiamondFire())
             .executes(context -> {
-                context.getSource().sendFeedback(Text.literal("BY LOCATION -----------"));
-                context.getSource().sendFeedback(Text.literal(DF_STATE.templatesByLocation.toString()));
-                context.getSource().sendFeedback(Text.literal("BY NAME-----------"));
-                context.getSource().sendFeedback(Text.literal(DF_STATE.templatesByName.toString()));
-                context.getSource().sendFeedback(Text.literal("BY FLOOR-----------"));
-                context.getSource().sendFeedback(Text.literal(DF_STATE.floors.toString()));
+                context.getSource().sendFeedback(Component.literal("BY LOCATION -----------"));
+                context.getSource().sendFeedback(Component.literal(DF_STATE.templatesByLocation.toString()));
+                context.getSource().sendFeedback(Component.literal("BY NAME-----------"));
+                context.getSource().sendFeedback(Component.literal(DF_STATE.templatesByName.toString()));
+                context.getSource().sendFeedback(Component.literal("BY FLOOR-----------"));
+                context.getSource().sendFeedback(Component.literal(DF_STATE.floors.toString()));
 
                 int numFunctions = 0;
                 for (String name : DF_STATE.templatesByName.get(TemplateType.FUNCTION).keySet()) {
@@ -266,15 +266,15 @@ public class TCClient implements ClientModInitializer {
                     numProcesses += DF_STATE.templatesByName.get(TemplateType.PROCESS).get(name).size();
                 }
 
-                context.getSource().sendFeedback(Text.literal("\n#EVENTS = " + numEvents));
-                context.getSource().sendFeedback(Text.literal("#FUNCTIONS = " + numFunctions));
-                context.getSource().sendFeedback(Text.literal("#PROCESSES = " + numProcesses));
+                context.getSource().sendFeedback(Component.literal("\n#EVENTS = " + numEvents));
+                context.getSource().sendFeedback(Component.literal("#FUNCTIONS = " + numFunctions));
+                context.getSource().sendFeedback(Component.literal("#PROCESSES = " + numProcesses));
                 return 1;
             }));
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (API_SERVER != null && API_SERVER.isOpen() && TCClient.MCI.world == null) {
+            if (API_SERVER != null && API_SERVER.isOpen() && TCClient.MCI.level == null) {
                 try {
                     API_SERVER.stop();
                 } catch (Exception ignored) {}
@@ -293,7 +293,7 @@ public class TCClient implements ClientModInitializer {
 
             // start API server
             ticksUntilTryAPIServer--;
-            if (TCClient.MCI.world != null && TCClient.MCI.player != null) {
+            if (TCClient.MCI.level != null && TCClient.MCI.player != null) {
                 if (API_SERVER == null && ticksUntilTryAPIServer <= 0) {
                     ticksUntilTryAPIServer = 100;
                     try {
@@ -332,14 +332,14 @@ public class TCClient implements ClientModInitializer {
         serverIsDiamondFire = val;
     }
     public static boolean isOnDiamondFire() {
-        if (TCClient.MCI.world == null || TCClient.MCI.player == null)
+        if (TCClient.MCI.level == null || TCClient.MCI.player == null)
             return false;
         return serverIsDiamondFire;
     }
 
     public static boolean isChunkLoaded(ChunkPos chunkPos) {
 //        return loadedChunks.containsKey(chunkPos);
-        return MCI.world.isPosLoaded(new BlockPos(
+        return MCI.level.isLoaded(new BlockPos(
             chunkPos.x*16,
             0,
             chunkPos.z*16
@@ -351,7 +351,7 @@ public class TCClient implements ClientModInitializer {
     public static boolean isChunkLoaded(Vec3i iPos) {
         return isChunkLoaded(new BlockPos(iPos));
     }
-    public static boolean isChunkLoaded(Vec3d pos) {
+    public static boolean isChunkLoaded(Vec3 pos) {
         return isChunkLoaded(new Vec3i((int)pos.x,(int)pos.y,(int)pos.z));
     }
 
@@ -370,14 +370,14 @@ public class TCClient implements ClientModInitializer {
     }
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
-        safeMessage(Text.literal("mode change detected :D (" + newMode.toString() + ")"));
+        safeMessage(Component.literal("mode change detected :D (" + newMode.toString() + ")"));
         APIServer.broadcastNotification(new ModeChangedC2ANotification(newMode));
         for (ModeChangeReceiver receiver : modeChangeReceivers) {
             receiver.onModeChanged(newMode);
         }
     }
 
-    public static void fireTeleportReceivers(Vec3d newPos, Vec3d oldPos) {
+    public static void fireTeleportReceivers(Vec3 newPos, Vec3 oldPos) {
         for (TeleportReceiver receiver : teleportReceivers) {
             receiver.onTeleported(newPos, oldPos);
         }
@@ -389,7 +389,7 @@ public class TCClient implements ClientModInitializer {
         }
     }
 
-    public static void fireChatMessageReceivers(Text message) {
+    public static void fireChatMessageReceivers(Component message) {
         for (ChatMessageReceiver receiver : chatMessageReceivers) {
             receiver.onChatMessage(message);
         }
@@ -401,13 +401,13 @@ public class TCClient implements ClientModInitializer {
         }
     };
 
-    public static void fireChunkDeltaReceivers(ChunkDeltaUpdateS2CPacket packet) {
+    public static void fireChunkDeltaReceivers(ClientboundSectionBlocksUpdatePacket packet) {
         for (ChunkReceiver receiver : chunkReceivers) {
             receiver.onChunkDelta(packet);
         }
     }
 
-    public static void fireBlockEntityUpdateReceivers(BlockEntityUpdateS2CPacket packet) {
+    public static void fireBlockEntityUpdateReceivers(ClientboundBlockEntityDataPacket packet) {
         for (ChunkReceiver receiver : chunkReceivers) {
             receiver.onBlockEntityUpdate(packet);
         }
@@ -436,7 +436,7 @@ public class TCClient implements ClientModInitializer {
      * Messages will be sent in the order they are queued.
      * @param text The message to send.
      */
-    public static void safeMessage(Text text) {
+    public static void safeMessage(Component text) {
         queuedChatMessages.add(text);
     }
 

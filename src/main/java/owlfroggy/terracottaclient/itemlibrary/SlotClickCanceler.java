@@ -1,14 +1,14 @@
 package owlfroggy.terracottaclient.itemlibrary;
 
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.BundleItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.BundleItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.ClickType;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import owlfroggy.terracottaclient.TCClient;
 
@@ -26,40 +26,40 @@ public class SlotClickCanceler {
     private static List<Slot> quickCraftSlices = new ArrayList<>();
 
     // warning: this function sucks
-    public static void onSlotClick(Slot slot, int button, SlotActionType actionType, CallbackInfo ci, ItemStack cursorStack, Slot focusedSlot) {
-        if (actionType == SlotActionType.QUICK_CRAFT){
+    public static void onSlotClick(Slot slot, int button, ClickType actionType, CallbackInfo ci, ItemStack cursorStack, Slot focusedSlot) {
+        if (actionType == ClickType.QUICK_CRAFT){
             if (button == 0) {
-                int stage = ScreenHandler.unpackQuickCraftStage(button);
+                int stage = AbstractContainerMenu.getQuickcraftHeader(button);
                 if (stage == 0) {
                     quickCraftSlices.clear();
                     return;
                 }
                 if (stage == 1) {
                     if (!quickCraftSlices.contains(slot)) quickCraftSlices.add(slot);
-                    if (quickCraftSlices.size() == 1 && slot.inventory instanceof PlayerInventory) return;
+                    if (quickCraftSlices.size() == 1 && slot.container instanceof Inventory) return;
                 }
                 if (stage == 2) {
-                    if (quickCraftSlices.size() == 1 && quickCraftSlices.toArray(new Slot[0])[0].inventory instanceof PlayerInventory) return;
+                    if (quickCraftSlices.size() == 1 && quickCraftSlices.toArray(new Slot[0])[0].container instanceof Inventory) return;
                 }
             }
             cancelIfLibItem(ci, cursorStack);
         }
-        else if (actionType == SlotActionType.QUICK_MOVE) {
+        else if (actionType == ClickType.QUICK_MOVE) {
             if (focusedSlot == null || slot == null) return;
-            if (TCClient.MCI.currentScreen instanceof InventoryScreen || TCClient.MCI.currentScreen instanceof CreativeInventoryScreen)
+            if (TCClient.MCI.screen instanceof InventoryScreen || TCClient.MCI.screen instanceof CreativeModeInventoryScreen)
                 return;
-            cancelIfLibItem(ci, focusedSlot.getStack());
+            cancelIfLibItem(ci, focusedSlot.getItem());
         }
-        else if (actionType == SlotActionType.CLONE) {
+        else if (actionType == ClickType.CLONE) {
             if (focusedSlot == null) return;
-            cancelIfLibItem(ci, focusedSlot.getStack());
+            cancelIfLibItem(ci, focusedSlot.getItem());
         }
-        else if (actionType == SlotActionType.PICKUP || actionType == SlotActionType.PICKUP_ALL) {
+        else if (actionType == ClickType.PICKUP || actionType == ClickType.PICKUP_ALL) {
             if (focusedSlot == null) {
                 cancelIfLibItem(ci, cursorStack);
                 return;
             }
-            ItemStack focusedStack = focusedSlot.getStack();
+            ItemStack focusedStack = focusedSlot.getItem();
 
             // dont let items be put into bundles
             if (button == 0) {
@@ -70,17 +70,17 @@ public class SlotClickCanceler {
             }
 
             if (!focusedStack.isEmpty() && !cursorStack.isEmpty()) {
-                if (!(focusedSlot.inventory instanceof PlayerInventory)) {
+                if (!(focusedSlot.container instanceof Inventory)) {
                     cancelIfLibItem(ci, cursorStack);
                 }
             }
             else if (focusedStack.isEmpty() && !cursorStack.isEmpty()) {
                 if (button == 1 && cursorStack.getCount() > 1) cancelIfLibItem(ci, cursorStack);
-                if (!(focusedSlot.inventory instanceof PlayerInventory)) cancelIfLibItem(ci, cursorStack);
+                if (!(focusedSlot.container instanceof Inventory)) cancelIfLibItem(ci, cursorStack);
             }
             else if (!focusedStack.isEmpty() && cursorStack.isEmpty()) {
                 if (button == 1 && focusedStack.getCount() > 1) cancelIfLibItem(ci, focusedStack);
-                if (!(focusedSlot.inventory instanceof PlayerInventory)) cancelIfLibItem(ci, focusedStack);
+                if (!(focusedSlot.container instanceof Inventory)) cancelIfLibItem(ci, focusedStack);
             }
         }
     }

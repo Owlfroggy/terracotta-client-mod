@@ -1,6 +1,6 @@
 package owlfroggy.terracottaclient;
 
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
 import java.util.PriorityQueue;
@@ -23,8 +23,8 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
         }
     }
 
-    public void onTickEnd(MinecraftClient client) {
-        if (TCClient.MCI.getNetworkHandler() == null) return;
+    public void onTickEnd(Minecraft client) {
+        if (TCClient.MCI.getConnection() == null) return;
         if (commandCooldown > 0) {
             commandCooldown--;
             return;
@@ -33,7 +33,7 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
         String command = commandQueue.poll();
         if (command == null) return;
 
-        TCClient.MCI.getNetworkHandler().sendChatCommand(command);
+        TCClient.MCI.getConnection().sendCommand(command);
         TCClient.LOGGER.info("Sending chat command: "+command);
         commandCooldown = COMMAND_COOLDOWN_TICKS;
     }

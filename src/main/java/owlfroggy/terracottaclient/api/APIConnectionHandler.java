@@ -1,9 +1,9 @@
 package owlfroggy.terracottaclient.api;
 
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Colors;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.CommonColors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import owlfroggy.terracottaclient.DFState;
@@ -88,7 +88,7 @@ public class APIConnectionHandler {
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
             respond(r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
-            TCClient.safeMessage(Text.literal("authed "+appName).withColor(Colors.GREEN));
+            TCClient.safeMessage(Component.literal("authed "+appName).withColor(CommonColors.GREEN));
             sendInitialState();
         }
     }
@@ -127,7 +127,7 @@ public class APIConnectionHandler {
 
             authenticationRequest = r;
 
-            TCClient.safeMessage(Text.literal(
+            TCClient.safeMessage(Component.literal(
                 r.getAppName() + "is tryin  to connect w/ permissions: " + r.getPermissions().toString()
                 + "     & appid = " + getId()
             ));
@@ -137,7 +137,7 @@ public class APIConnectionHandler {
             if (token == null) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
-                TCClient.safeMessage(Text.literal(
+                TCClient.safeMessage(Component.literal(
                     "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
                 ));
                 this.token = token;
@@ -199,27 +199,27 @@ public class APIConnectionHandler {
             TCClient.ITEM_LIBRARY_MANAGER.stopEditingItem(r.getItemId());
         }
         else if (request instanceof GiveItemA2CRequest r) {
-            int slot = TCClient.MCI.player.getInventory().getEmptySlot();
+            int slot = TCClient.MCI.player.getInventory().getFreeSlot();
             if (slot == -1) {
                 respond(r, new ErrorResponse(APIErrorCode.NO_SPACE, "Not inventory enough space to give item."));
                 return;
             }
 
             try {
-                TCClient.MCI.player.getInventory().setStack(slot, Utils.snbtToItem(r.getSnbt()));
+                TCClient.MCI.player.getInventory().setItem(slot, Utils.snbtToItem(r.getSnbt()));
             } catch (Exception e) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_ITEM_DATA, "Invalid item data: "+e));
             }
         }
         else if (request instanceof GetInventoryA2CRequest r) {
-            PlayerInventory inv = TCClient.MCI.player.getInventory();
+            Inventory inv = TCClient.MCI.player.getInventory();
             HashMap<Integer, GetInventoryC2AResponse.ItemEntry> itemEntries = new HashMap<>();
-            for (int slot = 0; slot < inv.size(); slot++) {
-                ItemStack item = inv.getStack(slot);
+            for (int slot = 0; slot < inv.getContainerSize(); slot++) {
+                ItemStack item = inv.getItem(slot);
                 if (item.isEmpty()) continue;
                 if (TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item) != null) continue;
                 itemEntries.put(slot, new GetInventoryC2AResponse.ItemEntry(
-                    item.getName().getString(),
+                    item.getHoverName().getString(),
                     Utils.itemToSnbt(item)
                 ));
             }

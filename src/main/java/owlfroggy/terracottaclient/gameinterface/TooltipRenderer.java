@@ -1,12 +1,12 @@
 package owlfroggy.terracottaclient.gameinterface;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.text.Text;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
 public interface TooltipRenderer {
-    void onItemTooltip(ItemStack item, Item.TooltipContext context, TooltipType type, List<Text> lines);
+    void onItemTooltip(ItemStack item, Item.TooltipContext context, TooltipFlag type, List<Component> lines);
 }

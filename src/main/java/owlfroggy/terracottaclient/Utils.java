@@ -2,22 +2,22 @@ package owlfroggy.terracottaclient;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.DataResult;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.AttributeModifierSlot;
-import net.minecraft.component.type.AttributeModifiersComponent;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.StringNbtReader;
-import net.minecraft.network.packet.c2s.play.CreativeInventoryActionC2SPacket;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.Vec3i;
 import owlfroggy.terracottaclient.itemlibrary.InvalidNBTException;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
@@ -30,19 +30,19 @@ public class Utils {
      * @param silent If true, send the server packet only and do not update the client's inv
      */
     public static void setItemInSlot(int slot, ItemStack item, boolean silent) {
-        if (!silent) TCClient.MCI.player.getInventory().setStack(slot,item);
+        if (!silent) TCClient.MCI.player.getInventory().setItem(slot,item);
         // whoever at mojang decided that slot indexes are different in the creative inventory
         // packet needs to be SMONGULATED!!!!!! you just wasted HALF AN HOUR of my time!!!!
         if (slot == 40) slot = 45; // offhand slot
         if (slot >= 0 && slot <= 8) slot += 36; //hotbar
-        TCClient.MCI.getNetworkHandler().sendPacket(new CreativeInventoryActionC2SPacket(slot, item));
+        TCClient.MCI.getConnection().send(new ServerboundSetCreativeModeSlotPacket(slot, item));
     }
     public static void setItemInSlot(int slot, ItemStack item) {
         setItemInSlot(slot,item,false);
     }
 
-    public static Vec3d toVec3d(Vec3i vec) {
-        return new Vec3d(
+    public static Vec3 toVec3d(Vec3i vec) {
+        return new Vec3(
             (double) vec.getX(),
             (double) vec.getY(),
             (double) vec.getZ()
@@ -50,18 +50,18 @@ public class Utils {
     }
 
     public static ItemStack applyReachToItem(ItemStack item, String attributeId) {
-        AttributeModifiersComponent.Entry attribute = new AttributeModifiersComponent.Entry(
-            EntityAttributes.BLOCK_INTERACTION_RANGE,
-            new EntityAttributeModifier(Identifier.of(TCClient.MOD_ID, attributeId),64.0d, EntityAttributeModifier.Operation.ADD_VALUE),
+        ItemAttributeModifiers.Entry attribute = new ItemAttributeModifiers.Entry(
+            Attributes.BLOCK_INTERACTION_RANGE,
+            new AttributeModifier(Identifier.fromNamespaceAndPath(TCClient.MOD_ID, attributeId),64.0d, AttributeModifier.Operation.ADD_VALUE),
             // VV for testing placement failure
 //            new EntityAttributeModifier(Identifier.of(TCClient.MOD_ID, attributeId),64.0d * ((Math.random() < 0.5) ? -1 : 1), EntityAttributeModifier.Operation.ADD_VALUE),
-            AttributeModifierSlot.OFFHAND,
-            AttributeModifiersComponent.Display.getDefault()
+            EquipmentSlotGroup.OFFHAND,
+            ItemAttributeModifiers.Display.attributeModifiers()
         );
 
-        AttributeModifiersComponent root = new AttributeModifiersComponent(List.of(attribute));
+        ItemAttributeModifiers root = new ItemAttributeModifiers(List.of(attribute));
 
-        item.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, root);
+        item.set(DataComponents.ATTRIBUTE_MODIFIERS, root);
         return item;
     }
 
@@ -71,31 +71,31 @@ public class Utils {
     public static String itemToSnbt(ItemStack item) {
         ItemStack clone = item.copy();
 
-        NbtComponent customData = clone.getOrDefault(DataComponentTypes.CUSTOM_DATA, null);
+        CustomData customData = clone.getOrDefault(DataComponents.CUSTOM_DATA, null);
         if (customData != null) {
-            NbtCompound nbt = customData.copyNbt();
+            CompoundTag nbt = customData.copyTag();
             if (nbt.contains(ItemLibraryManager.CUSTOM_DATA_KEY))
                 nbt.remove(ItemLibraryManager.CUSTOM_DATA_KEY);
-            clone.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
+            clone.set(DataComponents.CUSTOM_DATA, CustomData.of(nbt));
         }
 
         return ItemStack.CODEC.encodeStart(
-            TCClient.MCI.player.getRegistryManager().getOps(NbtOps.INSTANCE),
+            TCClient.MCI.player.registryAccess().createSerializationContext(NbtOps.INSTANCE),
             clone
         ).getOrThrow().toString();
     }
 
     public static ItemStack snbtToItem(String snbt) {
         // parse nbt
-        NbtCompound nbt;
+        CompoundTag nbt;
         try {
-            nbt = StringNbtReader.readCompound(snbt);
+            nbt = TagParser.parseCompoundFully(snbt);
         } catch (CommandSyntaxException e) {
             throw new InvalidNBTException(e.getMessage());
         }
 
         // convert nbt to item
-        DataResult<ItemStack> result = ItemStack.CODEC.parse(TCClient.MCI.player.getRegistryManager().getOps(NbtOps.INSTANCE), nbt);
+        DataResult<ItemStack> result = ItemStack.CODEC.parse(TCClient.MCI.player.registryAccess().createSerializationContext(NbtOps.INSTANCE), nbt);
         try {
             return result.getOrThrow();
         } catch (Exception e) {

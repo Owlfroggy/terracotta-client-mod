@@ -4,18 +4,18 @@ import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuTexture;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.Framebuffer;
-import net.minecraft.client.gl.SimpleFramebuffer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.render.state.GuiRenderState;
-import net.minecraft.client.render.OutlineVertexConsumerProvider;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
-import net.minecraft.client.render.command.RenderDispatcher;
-import net.minecraft.client.render.fog.FogRenderer;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.renderer.OutlineBufferSource;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeStorage;
+import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
+import net.minecraft.client.renderer.fog.FogRenderer;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.Util;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.mixin.GuiRendererAccessor;
@@ -29,12 +29,12 @@ import java.util.Base64;
 import java.util.function.Consumer;
 
 public class ItemRenderGenerator {
-    private static void framebufferToImageWithAlpha(Framebuffer framebuffer, Consumer<NativeImage> callback) {
+    private static void framebufferToImageWithAlpha(RenderTarget framebuffer, Consumer<NativeImage> callback) {
         // write framebuffer to native image
 
-        int i = framebuffer.textureWidth;
-        int j = framebuffer.textureHeight;
-        GpuTexture gpuTexture = framebuffer.getColorAttachment();
+        int i = framebuffer.width;
+        int j = framebuffer.height;
+        GpuTexture gpuTexture = framebuffer.getColorTexture();
         GpuBuffer gpuBuffer = RenderSystem.getDevice().createBuffer(() -> "Screenshot buffer", 9, (long)i * j * gpuTexture.getFormat().pixelSize());
         CommandEncoder commandEncoder = RenderSystem.getDevice().createCommandEncoder();
         RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(gpuTexture, gpuBuffer, 0L, () -> {
@@ -48,7 +48,7 @@ public class ItemRenderGenerator {
                     for (int o = 0; o < m; o++) {
                         int p = mappedView.data().getInt((o + n * i) * gpuTexture.getFormat().pixelSize());
 //                        image.setColor(o, j - n - 1, p | 0xFF000000);
-                        image.setColor(o, j - n - 1, p);
+                        image.setPixelABGR(o, j - n - 1, p);
                     }
                 }
 
@@ -61,57 +61,57 @@ public class ItemRenderGenerator {
         }, 0);
     }
 
-    private static Framebuffer renderToFramebuffer(ItemStack itemStack, int renderScale) {
-        MinecraftClient client = TCClient.MCI;
+    private static RenderTarget renderToFramebuffer(ItemStack itemStack, int renderScale) {
+        Minecraft client = TCClient.MCI;
         GuiRenderState guiState = new GuiRenderState();
 
-        OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
-        int wsf = client.getWindow().getScaleFactor();
-        int wfx = client.getWindow().getFramebufferWidth();
-        int wfy = client.getWindow().getFramebufferHeight();
-        client.getWindow().setScaleFactor(renderScale);
-        client.getWindow().setFramebufferHeight(16 * renderScale);
-        client.getWindow().setFramebufferWidth(16 * renderScale);
-        Framebuffer framebuffer = new SimpleFramebuffer(
+        SubmitNodeStorage queue = new SubmitNodeStorage();
+        int wsf = client.getWindow().getGuiScale();
+        int wfx = client.getWindow().getWidth();
+        int wfy = client.getWindow().getHeight();
+        client.getWindow().setGuiScale(renderScale);
+        client.getWindow().setHeight(16 * renderScale);
+        client.getWindow().setWidth(16 * renderScale);
+        RenderTarget framebuffer = new TextureTarget(
             "itemRender",
             16 * renderScale,
             16 * renderScale,
             true
         );
 
-        VertexConsumerProvider.Immediate vertexConsumerProvider = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+        MultiBufferSource.BufferSource vertexConsumerProvider = Minecraft.getInstance().renderBuffers().bufferSource();
         RetargetableRenderer renderer = new RetargetableRenderer(
             framebuffer,
             guiState,
             vertexConsumerProvider,
             queue,
-            new RenderDispatcher(
+            new FeatureRenderDispatcher(
                 queue,
-                TCClient.MCI.getBlockRenderManager(),
+                TCClient.MCI.getBlockRenderer(),
                 vertexConsumerProvider,
                 TCClient.MCI.getAtlasManager(),
-                new OutlineVertexConsumerProvider(),
+                new OutlineBufferSource(),
                 vertexConsumerProvider,
-                TCClient.MCI.textRenderer
+                TCClient.MCI.font
             ),
             new ArrayList<>()
         );
 
         FogRenderer fogRenderer = new FogRenderer();
 
-        int mx = (int)client.mouse.getScaledX(client.getWindow());
-        int my = (int)client.mouse.getScaledY(client.getWindow());
-        DrawContext drawContext = new DrawContext(client, guiState, mx, my);
-        drawContext.drawItemWithoutEntity(itemStack,0,0);
+        int mx = (int)client.mouseHandler.getScaledXPos(client.getWindow());
+        int my = (int)client.mouseHandler.getScaledYPos(client.getWindow());
+        GuiGraphics drawContext = new GuiGraphics(client, guiState, mx, my);
+        drawContext.renderFakeItem(itemStack,0,0);
 
         ((GuiRendererAccessor)renderer).invokePrepare();
-        ((GuiRendererAccessor)renderer).invokeRenderPreapredDraws(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));
+        ((GuiRendererAccessor)renderer).invokeRenderPreapredDraws(fogRenderer.getBuffer(FogRenderer.FogMode.NONE));
 
-        vertexConsumerProvider.draw();
-        client.getWindow().setScaleFactor(wsf);
-        client.getWindow().setFramebufferWidth(wfx);
-        client.getWindow().setFramebufferHeight(wfy);
-        TCClient.MCI.onResolutionChanged();
+        vertexConsumerProvider.endBatch();
+        client.getWindow().setGuiScale(wsf);
+        client.getWindow().setWidth(wfx);
+        client.getWindow().setHeight(wfy);
+        TCClient.MCI.resizeDisplay();
 
         return framebuffer;
     }
@@ -129,7 +129,7 @@ public class ItemRenderGenerator {
 
                 for (int y = 0; y < h; y++) {
                     for (int x = 0; x < w; x++) {
-                        bi.setRGB(x, y, image.getColorArgb(x, y));
+                        bi.setRGB(x, y, image.getPixel(x, y));
                     }
                 }
 
@@ -147,11 +147,11 @@ public class ItemRenderGenerator {
     public static void renderToFile(String filePath, ItemStack item, int renderScale) {
         framebufferToImageWithAlpha(renderToFramebuffer(item,renderScale), (image) -> {
             File savePath = new File(filePath);
-            Util.getIoWorkerExecutor()
+            Util.ioPool()
             .execute(() -> {
                 try {
                     try {
-                        image.writeTo(savePath);
+                        image.writeToFile(savePath);
                     } catch (Throwable var7) {
                         if (image != null) {
                             try {

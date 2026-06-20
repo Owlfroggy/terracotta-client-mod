@@ -1,7 +1,7 @@
 package owlfroggy.terracottaclient.mixin;
 
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -9,10 +9,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.TCClient;
 
-@Mixin(ClientPlayNetworkHandler.class)
+@Mixin(ClientPacketListener.class)
 public class ChatMessageInterceptor {
-	@Inject(method = "onGameMessage", at = @At("HEAD"), cancellable = true)
-	private void init(GameMessageS2CPacket packet, CallbackInfo info) {
+	@Inject(method = "handleSystemChat", at = @At("HEAD"), cancellable = true)
+	private void init(ClientboundSystemChatPacket packet, CallbackInfo info) {
         if (!packet.overlay()) {
             boolean shouldSuppressLocate = TCClient.DF_STATE.modeRefreshQueued;
             boolean shouldSupprsesOOB = TCClient.DF_STATE.getScanState() == DFState.ScanState.SCANNING_BOUNDS;

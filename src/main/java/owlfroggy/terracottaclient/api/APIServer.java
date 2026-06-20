@@ -4,7 +4,7 @@ import com.google.gson.*;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
@@ -220,11 +220,11 @@ public class APIServer extends WebSocketServer {
     /** this is the command handler for /tcallow and /tcdeny */
     public static int decideAppAuthentication(CommandContext<FabricClientCommandSource> commandContext, boolean allow) {
         if (TCClient.API_SERVER == null)
-            commandContext.getSource().sendError(Text.literal("Terracotta API has not started yet."));
+            commandContext.getSource().sendError(Component.literal("Terracotta API has not started yet."));
 
         int appId = IntegerArgumentType.getInteger(commandContext, "app_id");
         if (!TCClient.API_SERVER.connectedAppsById.containsKey(appId)) {
-            commandContext.getSource().sendError(Text.literal("No connected app has id '%s'".formatted(appId)));
+            commandContext.getSource().sendError(Component.literal("No connected app has id '%s'".formatted(appId)));
             return 0;
         }
         APIConnectionHandler app = TCClient.API_SERVER.connectedAppsById.get(appId);
@@ -232,25 +232,25 @@ public class APIServer extends WebSocketServer {
         if (!app.isPendingAuthentication()) {
             if (app.isAuthenticated()) {
                 if (allow) {
-                    commandContext.getSource().sendError(Text.literal("App has already been authenticated."));
+                    commandContext.getSource().sendError(Component.literal("App has already been authenticated."));
                     return 0;
                 } else {
                     //TODO: Make this actually work
-                    commandContext.getSource().sendError(Text.literal("App has already been authenticated. If you want to disconnect the app, click [here]."));
+                    commandContext.getSource().sendError(Component.literal("App has already been authenticated. If you want to disconnect the app, click [here]."));
                     return 0;
                 }
             } else {
-                commandContext.getSource().sendError(Text.literal("App has already been denied authentication."));
+                commandContext.getSource().sendError(Component.literal("App has already been denied authentication."));
                 return 0;
             }
         }
 
         if (allow) {
             app.allowAuthentication();
-            commandContext.getSource().sendFeedback(Text.literal("Allowed %s".formatted(appId)));
+            commandContext.getSource().sendFeedback(Component.literal("Allowed %s".formatted(appId)));
         } else {
             app.denyAuthentication();
-            commandContext.getSource().sendFeedback(Text.literal("Denied %s".formatted(appId)));
+            commandContext.getSource().sendFeedback(Component.literal("Denied %s".formatted(appId)));
         }
 
         return 1;

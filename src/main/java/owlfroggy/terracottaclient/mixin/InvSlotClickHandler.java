@@ -1,12 +1,12 @@
 package owlfroggy.terracottaclient.mixin;
 
-import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.ClickType;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,21 +18,21 @@ import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.itemlibrary.SlotClickCanceler;
 
 // prevents library items from being split
-@Mixin(ScreenHandler.class)
+@Mixin(AbstractContainerMenu.class)
 public abstract class InvSlotClickHandler {
 
     @Shadow
     public abstract Slot getSlot(int index);
 
     @Shadow
-    private ItemStack cursorStack;
+    private ItemStack carried;
 
-    @Inject(at = @At("HEAD"), method = "onSlotClick(IILnet/minecraft/screen/slot/SlotActionType;Lnet/minecraft/entity/player/PlayerEntity;)V", cancellable = true)
-    private void init(int slotIndex, int button, SlotActionType actionType, PlayerEntity player, CallbackInfo ci) {
+    @Inject(at = @At("HEAD"), method = "clicked(IILnet/minecraft/world/inventory/ClickType;Lnet/minecraft/world/entity/player/Player;)V", cancellable = true)
+    private void init(int slotIndex, int button, ClickType actionType, Player player, CallbackInfo ci) {
         Slot s = (slotIndex < 0) ? null : getSlot(slotIndex);
-        ItemStack realCursorStack = cursorStack;
-        if ((Object) this instanceof CreativeInventoryScreen.CreativeScreenHandler realThis) {
-            realCursorStack = realThis.getCursorStack();
+        ItemStack realCursorStack = carried;
+        if ((Object) this instanceof CreativeModeInventoryScreen.ItemPickerMenu realThis) {
+            realCursorStack = realThis.getCarried();
         }
         SlotClickCanceler.onSlotClick(s, button, actionType, ci, realCursorStack, s);
     }

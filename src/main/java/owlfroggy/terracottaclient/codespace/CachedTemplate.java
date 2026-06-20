@@ -1,6 +1,6 @@
 package owlfroggy.terracottaclient.codespace;
 
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.core.Vec3i;
 
 public class CachedTemplate {
     public TemplateIdentifier id;

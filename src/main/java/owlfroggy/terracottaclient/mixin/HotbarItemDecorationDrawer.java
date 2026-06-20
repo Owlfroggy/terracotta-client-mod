@@ -1,15 +1,15 @@
 package owlfroggy.terracottaclient.mixin;
 
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.util.Arm;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,24 +17,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
-@Mixin(InGameHud.class)
+@Mixin(Gui.class)
 public class HotbarItemDecorationDrawer {
-    @Inject(method = "renderHotbar", at = @At(value = "RETURN"))
-    private void init(DrawContext context, RenderTickCounter tickCounter, CallbackInfo info) {
+    @Inject(method = "renderItemHotbar", at = @At(value = "RETURN"))
+    private void init(GuiGraphics context, DeltaTracker tickCounter, CallbackInfo info) {
         if (TCClient.MCI.player == null) return;
 
-        int centerX = context.getScaledWindowWidth() / 2;
+        int centerX = context.guiWidth() / 2;
 
         for (int i = 0; i < 9; i++) {
             int x = centerX - 90 + i * 20 + 2;
-            int y = context.getScaledWindowHeight() - 16 - 3;
-            TCClient.ITEM_LIBRARY_MANAGER.applyHotbarSlotDecoration(context, x, y, TCClient.MCI.player.getInventory().getStack(i), info);
+            int y = context.guiHeight() - 16 - 3;
+            TCClient.ITEM_LIBRARY_MANAGER.applyHotbarSlotDecoration(context, x, y, TCClient.MCI.player.getInventory().getItem(i), info);
         }
 
-        ItemStack hotbarItem = TCClient.MCI.player.getOffHandStack();
+        ItemStack hotbarItem = TCClient.MCI.player.getOffhandItem();
         if (!hotbarItem.isEmpty()) {
-            int m = context.getScaledWindowHeight() - 16 - 3;
-            if (TCClient.MCI.player.getMainArm().getOpposite() == Arm.LEFT) {
+            int m = context.guiHeight() - 16 - 3;
+            if (TCClient.MCI.player.getMainArm().getOpposite() == HumanoidArm.LEFT) {
                 TCClient.ITEM_LIBRARY_MANAGER.applyHotbarSlotDecoration(context, centerX - 91 - 26, m, hotbarItem, info);
             } else {
                 TCClient.ITEM_LIBRARY_MANAGER.applyHotbarSlotDecoration(context, centerX + 91 + 10, m, hotbarItem, info);

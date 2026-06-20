@@ -2,24 +2,24 @@ package owlfroggy.terracottaclient.itemlibrary;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.DataResult;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.util.Window;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.DeltaTracker;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.StringNbtReader;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -58,7 +58,7 @@ implements
         }
     }
 
-    public static final String CUSTOM_DATA_KEY = Identifier.of(TCClient.MOD_ID,"library_data").toString();
+    public static final String CUSTOM_DATA_KEY = Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"library_data").toString();
 
     /** key: edit id */
     private int lastEditId = 0;
@@ -69,16 +69,16 @@ implements
     public ItemLibraryManager.LibraryItemEditData getLibraryData(ItemStack item) {
         if (item.isEmpty()) return null;
 
-        NbtComponent customDataComp = item.getOrDefault(DataComponentTypes.CUSTOM_DATA, null);
+        CustomData customDataComp = item.getOrDefault(DataComponents.CUSTOM_DATA, null);
         if (customDataComp == null) return null;
-        NbtCompound nbt = customDataComp.copyNbt();
+        CompoundTag nbt = customDataComp.copyTag();
 
-        Optional<NbtCompound> customDataO = nbt.getCompound(CUSTOM_DATA_KEY);
+        Optional<CompoundTag> customDataO = nbt.getCompound(CUSTOM_DATA_KEY);
         if (customDataO.isEmpty()) return null;
 
-        NbtCompound customData = customDataO.get();
-        int editId = customData.getInt("edit_id",-1);
-        int appId = customData.getInt("app_id",-1);
+        CompoundTag customData = customDataO.get();
+        int editId = customData.getIntOr("edit_id",-1);
+        int appId = customData.getIntOr("app_id",-1);
         if (editId == -1 || appId == -1) return null;
 
         LibraryItemEditData data = activeEdits.get(editId);
@@ -89,7 +89,7 @@ implements
 
     public void startEditingItem(int appId, ItemId itemId, String itemData, int itemDataVersion) {
         //TODO: handle item version not matching client version
-        int slot = TCClient.MCI.player.getInventory().getEmptySlot();
+        int slot = TCClient.MCI.player.getInventory().getFreeSlot();
         if (slot == -1)
             throw new NoSpaceException("Not enough inventory space to start editing item.");
 
@@ -99,13 +99,13 @@ implements
         int editId = lastEditId;
 
         // add library item marker data
-        NbtCompound terracottaDict = new NbtCompound();
+        CompoundTag terracottaDict = new CompoundTag();
         terracottaDict.putInt("edit_id",editId);
         terracottaDict.putInt("app_id",appId);
 
-        NbtCompound customData = item.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(new NbtCompound())).copyNbt();
+        CompoundTag customData = item.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.of(new CompoundTag())).copyTag();
         customData.put(CUSTOM_DATA_KEY,terracottaDict);
-        item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(customData));
+        item.set(DataComponents.CUSTOM_DATA, CustomData.of(customData));
 
         Utils.setItemInSlot(slot, item);
 
@@ -120,9 +120,9 @@ implements
             for (int s = -1; s <= 40; s++) {
                 ItemStack thisItem;
                 if (s == -1)
-                    thisItem = TCClient.MCI.player.currentScreenHandler.getCursorStack();
+                    thisItem = TCClient.MCI.player.containerMenu.getCarried();
                 else
-                    thisItem = TCClient.MCI.player.getInventory().getStack(s);
+                    thisItem = TCClient.MCI.player.getInventory().getItem(s);
 
                 LibraryItemEditData thisEditData = getLibraryData(thisItem);
                 if (thisEditData == null) continue;
@@ -139,9 +139,9 @@ implements
         activeEdits.remove(editData.editId);
         activeEditsByItemId.remove(editData.itemId);
         if (slot == -1) {
-            TCClient.MCI.player.currentScreenHandler.setCursorStack(ItemStack.EMPTY);
+            TCClient.MCI.player.containerMenu.setCarried(ItemStack.EMPTY);
         } else if (slot >= 0) {
-            TCClient.MCI.player.getInventory().setStack(slot,ItemStack.EMPTY);
+            TCClient.MCI.player.getInventory().setItem(slot, ItemStack.EMPTY);
         }
     }
     public void stopEditingItem(ItemId itemId) {
@@ -155,22 +155,22 @@ implements
     }
 
     @Override
-    public void onItemTooltip(ItemStack item, Item.TooltipContext context, TooltipType type, List<Text> lines) {
+    public void onItemTooltip(ItemStack item, Item.TooltipContext context, TooltipFlag type, List<Component> lines) {
         LibraryItemEditData libraryData = getLibraryData(item);
         if (libraryData == null) return;
 
         Window handle = TCClient.MCI.getWindow();
-        boolean isShiftDown = InputUtil.isKeyPressed(handle, GLFW.GLFW_KEY_LEFT_SHIFT) || InputUtil.isKeyPressed(handle, GLFW.GLFW_KEY_RIGHT_SHIFT);
+        boolean isShiftDown = InputConstants.isKeyDown(handle, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(handle, GLFW.GLFW_KEY_RIGHT_SHIFT);
         if (isShiftDown) {
-            lines.add(Text.literal("(terracotta library item,").formatted(Formatting.DARK_GRAY));
-            lines.add(Text.literal("edits are being synced live)").formatted(Formatting.DARK_GRAY));
+            lines.add(Component.literal("(terracotta library item,").withStyle(ChatFormatting.DARK_GRAY));
+            lines.add(Component.literal("edits are being synced live)").withStyle(ChatFormatting.DARK_GRAY));
             lines.add(
-                Text.literal("Library ID: ").formatted(Formatting.DARK_GRAY)
-                .append(Text.literal(libraryData.itemId.library).formatted(Formatting.GRAY))
+                Component.literal("Library ID: ").withStyle(ChatFormatting.DARK_GRAY)
+                .append(Component.literal(libraryData.itemId.library).withStyle(ChatFormatting.GRAY))
             );
             lines.add(
-                Text.literal("Item ID: ").formatted(Formatting.DARK_GRAY)
-                .append(Text.literal(libraryData.itemId.item).formatted(Formatting.GRAY))
+                Component.literal("Item ID: ").withStyle(ChatFormatting.DARK_GRAY)
+                .append(Component.literal(libraryData.itemId.item).withStyle(ChatFormatting.GRAY))
             );
         }
     }
@@ -178,7 +178,7 @@ implements
     private final Set<LibraryItemEditData> seenEdits = new HashSet<>();
 
     @Override
-    public void onTickEnd(MinecraftClient client) {
+    public void onTickEnd(Minecraft client) {
         if (TCClient.MCI.player == null) return;
 
         seenEdits.clear();
@@ -186,9 +186,9 @@ implements
         for (int slot = -1; slot <= 40; slot++) {
             ItemStack item;
             if (slot == -1)
-                item = TCClient.MCI.player.currentScreenHandler.getCursorStack();
+                item = TCClient.MCI.player.containerMenu.getCarried();
             else
-                item = TCClient.MCI.player.getInventory().getStack(slot);
+                item = TCClient.MCI.player.getInventory().getItem(slot);
 
             LibraryItemEditData editData = getLibraryData(item);
             if (editData == null) continue;
@@ -224,14 +224,14 @@ implements
         }
     }
 
-    public void applySlotDecoration(DrawContext context, Slot slot, int mouseX, int mouseY, CallbackInfo info) {
-        ItemStack item = slot.getStack();
+    public void applySlotDecoration(GuiGraphics context, Slot slot, int mouseX, int mouseY, CallbackInfo info) {
+        ItemStack item = slot.getItem();
         LibraryItemEditData libraryData = getLibraryData(item);
 
         if (libraryData == null) return;
 
-        context.drawTexturedQuad(
-        Identifier.of(TCClient.MOD_ID,"ui/library_slot.png"),
+        context.blit(
+        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_slot.png"),
         slot.x-2, slot.y-2,
         slot.x + 18, slot.y + 18,
         0, 1,
@@ -239,13 +239,13 @@ implements
         );
     }
 
-    public void applyHotbarSlotDecoration(DrawContext context, int x, int y, ItemStack item, CallbackInfo info) {
+    public void applyHotbarSlotDecoration(GuiGraphics context, int x, int y, ItemStack item, CallbackInfo info) {
         LibraryItemEditData libraryData = getLibraryData(item);
 
         if (libraryData == null) return;
 
-        context.drawTexturedQuad(
-        Identifier.of(TCClient.MOD_ID,"ui/library_hotbar_slot.png"),
+        context.blit(
+        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_slot.png"),
         x-2, y-2,
         x + 18, y + 18,
         0, 1,
@@ -253,17 +253,17 @@ implements
         );
     }
 
-    public void applyHotbarSelectionDecoration(DrawContext context, RenderTickCounter tickCounter, CallbackInfo info) {
+    public void applyHotbarSelectionDecoration(GuiGraphics context, DeltaTracker tickCounter, CallbackInfo info) {
         int selectedSlot = TCClient.MCI.player.getInventory().getSelectedSlot();
-        ItemStack item = TCClient.MCI.player.getInventory().getStack(selectedSlot);
+        ItemStack item = TCClient.MCI.player.getInventory().getItem(selectedSlot);
         LibraryItemEditData libraryData = TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item);
 
         if (libraryData == null) return;
 
-        int x1 = context.getScaledWindowWidth()/2 - 91 - 1 + selectedSlot * 20;
-        int y1 = context.getScaledWindowHeight() - 22 - 1;
-        context.drawTexturedQuad(
-        Identifier.of(TCClient.MOD_ID,"ui/library_hotbar_selection.png"),
+        int x1 = context.guiWidth()/2 - 91 - 1 + selectedSlot * 20;
+        int y1 = context.guiHeight() - 22 - 1;
+        context.blit(
+        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_selection.png"),
         x1, y1,
         x1 + 24, y1 + 23,
         0, 1,

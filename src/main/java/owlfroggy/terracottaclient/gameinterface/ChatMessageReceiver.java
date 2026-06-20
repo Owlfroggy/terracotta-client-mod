@@ -1,7 +1,7 @@
 package owlfroggy.terracottaclient.gameinterface;
 
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 
 public interface ChatMessageReceiver {
-    public void onChatMessage(Text message);
+    public void onChatMessage(Component message);
 }

@@ -1,13 +1,13 @@
 package owlfroggy.terracottaclient.mixin;
 
-import net.minecraft.client.network.ClientPlayerInteractionManager;
-import net.minecraft.client.network.SequencedPacketCreator;
-import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import net.minecraft.client.multiplayer.prediction.PredictiveAction;
+import net.minecraft.client.multiplayer.ClientLevel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin(ClientPlayerInteractionManager.class)
+@Mixin(MultiPlayerGameMode.class)
 public interface SequencedPacketAccessor {
-    @Invoker("sendSequencedPacket")
-    void invokeSendSequencedPacket(ClientWorld world, SequencedPacketCreator packetCreator);
+    @Invoker("startPrediction")
+    void invokeStartPrediction(ClientLevel world, PredictiveAction packetCreator);
 }

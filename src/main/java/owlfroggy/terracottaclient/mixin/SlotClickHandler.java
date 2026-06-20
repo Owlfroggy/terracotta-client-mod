@@ -1,16 +1,16 @@
 package owlfroggy.terracottaclient.mixin;
 
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.option.GameOptions;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.ScreenHandler;
-import net.minecraft.screen.slot.Slot;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.Options;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.ClickType;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,46 +25,46 @@ import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemlibrary.SlotClickCanceler;
 
 // prevents library items from being put into chests
-@Mixin(HandledScreen.class)
+@Mixin(AbstractContainerScreen.class)
 public class SlotClickHandler {
     @Shadow
     @Final
-    protected ScreenHandler handler;
+    protected AbstractContainerMenu menu;
 
     @Shadow
     @Nullable
-    protected Slot focusedSlot;
+    protected Slot hoveredSlot;
 
-    @Inject(at = @At("HEAD"), method = "onMouseClick(Lnet/minecraft/screen/slot/Slot;IILnet/minecraft/screen/slot/SlotActionType;)V", cancellable = true)
-    private void onSlotClick(Slot slot, int slotId, int button, SlotActionType actionType, CallbackInfo ci) {
-        SlotClickCanceler.onSlotClick(slot, button, actionType, ci, handler.getCursorStack(), focusedSlot);
+    @Inject(at = @At("HEAD"), method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ClickType;)V", cancellable = true)
+    private void onSlotClick(Slot slot, int slotId, int button, ClickType actionType, CallbackInfo ci) {
+        SlotClickCanceler.onSlotClick(slot, button, actionType, ci, menu.getCarried(), hoveredSlot);
     }
 
-    @Inject(at = @At("HEAD"), method = "handleHotbarKeyPressed", cancellable = true)
-    protected void onKeyPressed(KeyInput keyInput, CallbackInfoReturnable<Boolean> cir) {
+    @Inject(at = @At("HEAD"), method = "checkHotbarKeyPressed", cancellable = true)
+    protected void onKeyPressed(KeyEvent keyInput, CallbackInfoReturnable<Boolean> cir) {
         if (TCClient.MCI.player == null) return;
-        if (!(this.handler.getCursorStack().isEmpty() && this.focusedSlot != null)) return;
-        if (this.focusedSlot.inventory instanceof PlayerInventory) return;
+        if (!(this.menu.getCarried().isEmpty() && this.hoveredSlot != null)) return;
+        if (this.hoveredSlot.container instanceof Inventory) return;
 
-        GameOptions opt = TCClient.MCI.options;
+        Options opt = TCClient.MCI.options;
         ItemStack relevantItem = ItemStack.EMPTY;
         // swap hands
-        if (opt.swapHandsKey.matchesKey(keyInput)) {
-            relevantItem = TCClient.MCI.player.getOffHandStack();
+        if (opt.keySwapOffhand.matches(keyInput)) {
+            relevantItem = TCClient.MCI.player.getOffhandItem();
         }
 
         // hotbar
         int slot = -1;
-        for (KeyBinding key : opt.hotbarKeys) {
+        for (KeyMapping key : opt.keyHotbarSlots) {
             slot++;
-            if (key.matchesKey(keyInput)) {
-                relevantItem = TCClient.MCI.player.getInventory().getStack(slot);
+            if (key.matches(keyInput)) {
+                relevantItem = TCClient.MCI.player.getInventory().getItem(slot);
             }
         }
 
         // drop
-        if (opt.dropKey.matchesKey(keyInput)) {
-            relevantItem = TCClient.MCI.player.getInventory().getStack(this.focusedSlot.id);
+        if (opt.keyDrop.matches(keyInput)) {
+            relevantItem = TCClient.MCI.player.getInventory().getItem(this.hoveredSlot.index);
         }
 
         if (relevantItem.isEmpty() || TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(relevantItem) == null) return;

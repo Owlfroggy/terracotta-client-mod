@@ -1,7 +1,7 @@
 package owlfroggy.terracottaclient.api.message.impl;
 
 import com.google.gson.JsonObject;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 import owlfroggy.terracottaclient.Utils;
 import owlfroggy.terracottaclient.api.NotificationMethod;
 import owlfroggy.terracottaclient.api.Permission;

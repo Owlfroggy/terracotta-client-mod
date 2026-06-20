@@ -1,27 +1,27 @@
 package owlfroggy.terracottaclient;
 
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
-import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
-import net.minecraft.registry.Registries;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.Vec3i;
 import owlfroggy.terracottaclient.api.APIErrorCode;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.ErrorResponse;
@@ -103,35 +103,35 @@ implements
     private static final Pattern PLOT_REGEX = Pattern.compile("^→ (.+) \\[(\\d+)");
     private static final double TP_MAGIC_Y_VALUE = 52.15763;
     private static final double TP_MAGIC_Y_VALUE_UNDERGROUND = TP_MAGIC_Y_VALUE - 12;
-    private static final Text OUT_OF_BOUNDS_TEXT = (
-        Text.empty()
-        .append(Text.literal("Error: ").formatted(Formatting.RED))
-        .append(Text.literal("That location is out of bounds!").formatted(Formatting.GRAY))
+    private static final Component OUT_OF_BOUNDS_TEXT = (
+        Component.empty()
+        .append(Component.literal("Error: ").withStyle(ChatFormatting.RED))
+        .append(Component.literal("That location is out of bounds!").withStyle(ChatFormatting.GRAY))
     );
-    private static final Text FUNC_RENAME_HINT_TEXT = (
-        Text.empty()
-        .append(Text.literal("Right click the sign while holding a ").formatted(Formatting.YELLOW))
-        .append(Text.literal("String").formatted(Formatting.AQUA))
-        .append(Text.literal(" to name the Function.\n").formatted(Formatting.YELLOW))
-        .append(Text.literal("You can also use String on ").formatted(Formatting.YELLOW))
-        .append(Text.literal("Call Function").withColor(0xFF55AA))
-        .append(Text.literal(" blocks!").formatted(Formatting.YELLOW))
+    private static final Component FUNC_RENAME_HINT_TEXT = (
+        Component.empty()
+        .append(Component.literal("Right click the sign while holding a ").withStyle(ChatFormatting.YELLOW))
+        .append(Component.literal("String").withStyle(ChatFormatting.AQUA))
+        .append(Component.literal(" to name the Function.\n").withStyle(ChatFormatting.YELLOW))
+        .append(Component.literal("You can also use String on ").withStyle(ChatFormatting.YELLOW))
+        .append(Component.literal("Call Function").withColor(0xFF55AA))
+        .append(Component.literal(" blocks!").withStyle(ChatFormatting.YELLOW))
     );
-    private static final Text PREFERENCES_ITEM_NAME = (
-        Text.empty().setStyle(Style.EMPTY.withItalic(false))
-        .append(Text.literal("◇ ").withColor(0x7F7F2A))
-        .append(Text.literal("Preferences").formatted(Formatting.YELLOW))
-        .append(Text.literal(" ◇").withColor(0x7F7F2A))
+    private static final Component PREFERENCES_ITEM_NAME = (
+        Component.empty().setStyle(Style.EMPTY.withItalic(false))
+        .append(Component.literal("◇ ").withColor(0x7F7F2A))
+        .append(Component.literal("Preferences").withStyle(ChatFormatting.YELLOW))
+        .append(Component.literal(" ◇").withColor(0x7F7F2A))
     );
-    public static final Text PREFERENCES_ITEM_TOOLTIP = (
-        Text.empty().formatted(Formatting.DARK_PURPLE,Formatting.ITALIC)
+    public static final Component PREFERENCES_ITEM_TOOLTIP = (
+        Component.empty().withStyle(ChatFormatting.DARK_PURPLE, ChatFormatting.ITALIC)
         .append(
-            Text.literal("Edit your preferences here.").setStyle(
+            Component.literal("Edit your preferences here.").setStyle(
                 Style.EMPTY
-                .withColor(Formatting.GRAY)
+                .withColor(ChatFormatting.GRAY)
                 .withItalic(false)
                 .withBold(false)
-                .withUnderline(false)
+                .withUnderlined(false)
                 .withStrikethrough(false)
                 .withObfuscated(false)
             )
@@ -166,8 +166,8 @@ implements
     private Rank rank = null;
     public Rank getRank() { return rank != null ? rank : Rank.NON; }
 
-    private Vec3d plotOrigin;
-    public Vec3d getPlotOrigin() {return plotOrigin;}
+    private Vec3 plotOrigin;
+    public Vec3 getPlotOrigin() {return plotOrigin;}
     public Vec3i getIntPlotOrigin() {return new Vec3i((int)plotOrigin.x, (int)plotOrigin.y, (int)plotOrigin.z);}
 
     private Mode mode = Mode.SPAWN;
@@ -188,8 +188,8 @@ implements
     private int totalCodespaceChunks = -1;
     public int getTotalCodespaceChunks() {return totalCodespaceChunks;}
 
-    private CompletableFuture<Optional<Vec3d>> ptpFuture;
-    private AtomicReference<Vec3d> plotScanTargetPos = new AtomicReference<Vec3d>(null);
+    private CompletableFuture<Optional<Vec3>> ptpFuture;
+    private AtomicReference<Vec3> plotScanTargetPos = new AtomicReference<Vec3>(null);
 
     private boolean hideNextWhois = false;
     public boolean shouldHideNextWhois() { return hideNextWhois; }
@@ -270,22 +270,22 @@ implements
      * @param blockPos in WORLD SPACE!!
      */
     public void processBlockTemplate(BlockPos blockPos) {
-        if (TCClient.MCI.world == null) return;
+        if (TCClient.MCI.level == null) return;
 
         //remove old template at this block
-        Vec3i templatePos = TCClient.DF_STATE.toPlotSpace(blockPos).add(1,0,0);
+        Vec3i templatePos = TCClient.DF_STATE.toPlotSpace(blockPos).offset(1,0,0);
         if (templatesByLocation.containsKey(templatePos))
             removeTemplate(templatesByLocation.get(templatePos));
 
 
         // check if this block is a sign
-        BlockState signBlockState = TCClient.MCI.world.getBlockState(blockPos);
-        Identifier signBlockId = Registries.BLOCK.getId(signBlockState.getBlock());
-        if (!signBlockId.equals(Identifier.ofVanilla("oak_wall_sign"))) return;
-        BlockEntity blockEntity = TCClient.MCI.world.getBlockEntity(blockPos);
+        BlockState signBlockState = TCClient.MCI.level.getBlockState(blockPos);
+        Identifier signBlockId = BuiltInRegistries.BLOCK.getKey(signBlockState.getBlock());
+        if (!signBlockId.equals(Identifier.withDefaultNamespace("oak_wall_sign"))) return;
+        BlockEntity blockEntity = TCClient.MCI.level.getBlockEntity(blockPos);
         if (blockEntity instanceof SignBlockEntity sign) {
             // check if this is a header
-            Text topLine = sign.getFrontText().getMessage(0,false);
+            Component topLine = sign.getFrontText().getMessage(0,false);
             if (!NAMES_TO_TEMPLATE_TYPES.containsKey(topLine.getString())) return;
             if (!TCClient.DF_STATE.isWorldPosInCodespace(blockPos)) return;
             TemplateType templateType = NAMES_TO_TEMPLATE_TYPES.get(topLine.getString());
@@ -300,15 +300,15 @@ implements
         int chunkX = chunkPos.x;
         int chunkZ = chunkPos.z;
 
-        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+        Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
         if (plotOrigin == null) return;
         if (!TCClient.isChunkLoaded(chunkPos)) return;;
 
         if (queuedChunkRescans.contains(chunkPos)) {
             queuedChunkRescans.remove(chunkPos);
             // scanning progres report
-            TCClient.MCI.player.sendMessage(
-                Text.of(
+            TCClient.MCI.player.displayClientMessage(
+                Component.nullToEmpty(
                    " Scanning codespace: " + (int)(100-(double)queuedChunkRescans.size()/TCClient.DF_STATE.getTotalCodespaceChunks()*100) + "%"
                 ), true
             );
@@ -316,10 +316,10 @@ implements
 
         //dont scan chunk if it doesnt touch the codespace
         if (!(
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16,0,chunkZ*16)) ||
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16+15,0,chunkZ*16)) ||
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16,0,chunkZ*16+15)) ||
-            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3d(chunkX*16+15,0,chunkZ*16+15))
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3(chunkX*16,0,chunkZ*16)) ||
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3(chunkX*16+15,0,chunkZ*16)) ||
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3(chunkX*16,0,chunkZ*16+15)) ||
+            TCClient.DF_STATE.isWorldPosInCodespace(new Vec3(chunkX*16+15,0,chunkZ*16+15))
         )) {
             return;
         }
@@ -339,11 +339,11 @@ implements
         queuedChunkRescans.add(chunkPos);
     }
 
-    public Vec3d getPlotCorner(CodespaceCorner corner){
+    public Vec3 getPlotCorner(CodespaceCorner corner){
         if (plotOrigin == null)
             throw new RuntimeException("Cannot get plot corner because plot origin is unknown");
 
-        Vec3d coords = plotOrigin;
+        Vec3 coords = plotOrigin;
         if (corner == CodespaceCorner.FRONT_RIGHT || corner == CodespaceCorner.BACK_RIGHT) {
             coords = coords.add(-1,0,CODESPACE_Z_SIZES.get(plotType));
         }
@@ -353,12 +353,12 @@ implements
         return coords;
     }
 
-    public boolean isWorldPosInCodespace(Vec3d worldPos) {
+    public boolean isWorldPosInCodespace(Vec3 worldPos) {
         if (plotOrigin == null)
             throw new RuntimeException("Cannot get plot corner because plot origin is unknown");
 
-        Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
-        Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+        Vec3 minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+        Vec3 plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
 
         if (worldPos.x < minusCorner.x || worldPos.z < minusCorner.z) return false;
         if (worldPos.x > plusCorner.x || worldPos.z > plusCorner.z) return false;
@@ -366,12 +366,12 @@ implements
         return true;
     }
     public boolean isWorldPosInCodespace(BlockPos worldPos) {
-        return isWorldPosInCodespace(new Vec3d((double)worldPos.getX(), (double)worldPos.getY(), (double)worldPos.getZ()));
+        return isWorldPosInCodespace(new Vec3((double)worldPos.getX(), (double)worldPos.getY(), (double)worldPos.getZ()));
     }
 
     public BlockPos clampWorldPosToCodespace(BlockPos worldPos) {
-        Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
-        Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+        Vec3 minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+        Vec3 plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
 
         return new BlockPos(
             (int)Math.clamp(worldPos.getX(),minusCorner.x,plusCorner.x),
@@ -379,14 +379,14 @@ implements
             (int)Math.clamp(worldPos.getZ(),minusCorner.z,plusCorner.z)
         );
     }
-    public Vec3d clampWorldPosToCodespace(Vec3d worldPos) {
-        Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
-        Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+    public Vec3 clampWorldPosToCodespace(Vec3 worldPos) {
+        Vec3 minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+        Vec3 plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
 
-        return new Vec3d(
-            Math.clamp(worldPos.getX(),minusCorner.x,plusCorner.x),
-            worldPos.getY(),
-            Math.clamp(worldPos.getZ(),minusCorner.z,plusCorner.z)
+        return new Vec3(
+            Math.clamp(worldPos.x(),minusCorner.x,plusCorner.x),
+            worldPos.y(),
+            Math.clamp(worldPos.z(),minusCorner.z,plusCorner.z)
         );
     }
 
@@ -410,8 +410,8 @@ implements
                 setScanState(ScanState.SCANNING_BOUNDS);
 
                 PlotType currentSizeGuess = PlotType.BASIC;
-                Optional<Vec3d> teleportResult = Optional.empty();
-                Vec3d plotOriginGuess;
+                Optional<Vec3> teleportResult = Optional.empty();
+                Vec3 plotOriginGuess;
 
                 plotScanTargetPos.set(null);
                 doesHaveUndergroundCodespace = false;
@@ -422,7 +422,7 @@ implements
                 ptpFuture = new CompletableFuture<>();
                 TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0", TP_MAGIC_Y_VALUE));
                 try {
-                    Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
+                    Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
                     if (result.isEmpty()) {
                         throw new RuntimeException("Failed to get plot origin");
                     }
@@ -435,7 +435,7 @@ implements
                 ptpFuture = new CompletableFuture<>();
                 TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4", TP_MAGIC_Y_VALUE_UNDERGROUND));
                 try {
-                    Optional<Vec3d> result = ptpFuture.get(5, TimeUnit.SECONDS);
+                    Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
                     if (result.isPresent()) doesHaveUndergroundCodespace = true;
                 } catch (Exception e) {
                     throw new RuntimeException("Plot scan failed during underground codespace check due to not receiving a teleport response");
@@ -443,11 +443,11 @@ implements
 
                 // get plot size
                 sizeGuessLoop: while (getMode() == Mode.DEV) {
-                    Vec3d plotSpacePos;
+                    Vec3 plotSpacePos;
                     switch (currentSizeGuess) {
-                        case PlotType.BASIC -> plotSpacePos = new Vec3d(-1, TP_MAGIC_Y_VALUE, 51);
-                        case PlotType.LARGE -> plotSpacePos = new Vec3d(-1, TP_MAGIC_Y_VALUE, 101);
-                        case PlotType.MASSIVE -> plotSpacePos = new Vec3d(-300, TP_MAGIC_Y_VALUE, 1);
+                        case PlotType.BASIC -> plotSpacePos = new Vec3(-1, TP_MAGIC_Y_VALUE, 51);
+                        case PlotType.LARGE -> plotSpacePos = new Vec3(-1, TP_MAGIC_Y_VALUE, 101);
+                        case PlotType.MASSIVE -> plotSpacePos = new Vec3(-300, TP_MAGIC_Y_VALUE, 1);
                         default -> {
                             break sizeGuessLoop;
                         }
@@ -475,8 +475,8 @@ implements
                 plotOrigin = plotOriginGuess;
                 plotType = currentSizeGuess;
 
-                Vec3d minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
-                Vec3d plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
+                Vec3 minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
+                Vec3 plusCorner = getPlotCorner(CodespaceCorner.FRONT_RIGHT);
 
                 int minusCornerChunkX = (int) Math.floor(minusCorner.x / 16);
                 int minusCornerChunkZ = (int) Math.floor(minusCorner.z / 16);
@@ -499,8 +499,8 @@ implements
                     reverseZ = !reverseZ;
                 }
 
-                TCClient.safeMessage(Text.literal("Detected plot size:" + currentSizeGuess));
-                TCClient.safeMessage(Text.literal("Detected plot origin:" + plotOrigin));
+                TCClient.safeMessage(Component.literal("Detected plot size:" + currentSizeGuess));
+                TCClient.safeMessage(Component.literal("Detected plot origin:" + plotOrigin));
                 setScanState(ScanState.SCANNING_CODE);
             } catch (Exception e) {
                 failScan(e);
@@ -523,7 +523,7 @@ implements
         failScan(error.getMessage());
     }
 
-    public Vec3d toPlotSpace(Vec3d worldSpacePos) {
+    public Vec3 toPlotSpace(Vec3 worldSpacePos) {
         return worldSpacePos.subtract(getPlotOrigin());
     }
     public Vec3i toPlotSpace(Vec3i worldSpacePos) {
@@ -533,17 +533,17 @@ implements
         return worldSpacePos.subtract(getIntPlotOrigin());
     }
 
-    public Vec3d toWorldSpace(Vec3d plotSpacePos) {
+    public Vec3 toWorldSpace(Vec3 plotSpacePos) {
         return plotSpacePos.add(getPlotOrigin());
     }
     public Vec3i toWorldSpace(Vec3i plotSpacePos) {
-        return plotSpacePos.add(getIntPlotOrigin());
+        return plotSpacePos.offset(getIntPlotOrigin());
     }
     public Vec3i toWorldSpace(BlockPos plotSpacePos) {
-        return plotSpacePos.add(getIntPlotOrigin());
+        return plotSpacePos.offset(getIntPlotOrigin());
     }
 
-    public boolean isMessageLocateResult(Text message) {
+    public boolean isMessageLocateResult(Component message) {
         String[] messageStrLines = message.getString().split("\n");
         ClickEvent clickEvent = message.getStyle().getClickEvent();
         // /locate parsing checks the click event since that cannot be faked by plots
@@ -555,7 +555,7 @@ implements
         );
     }
 
-    public boolean isMessageWhoisResult(Text message) {
+    public boolean isMessageWhoisResult(Component message) {
         String[] messageStrLines = message.getString().split("\n");
         // /locate parsing checks the click event since that cannot be faked by plots
         return (
@@ -567,19 +567,19 @@ implements
         );
     }
 
-    public boolean isMessageOutOfBoundsError(Text message) {
+    public boolean isMessageOutOfBoundsError(Component message) {
         return message.equals(OUT_OF_BOUNDS_TEXT);
     }
 
-    public boolean isMessageFuncRenameHint(Text message) {
+    public boolean isMessageFuncRenameHint(Component message) {
         return message.equals(FUNC_RENAME_HINT_TEXT);
     }
 
-    public void onTeleported(Vec3d newPos, Vec3d oldPos) {
+    public void onTeleported(Vec3 newPos, Vec3 oldPos) {
         if (
             ptpFuture != null && !ptpFuture.isDone() &&
             (newPos.y == TP_MAGIC_Y_VALUE || newPos.y == TP_MAGIC_Y_VALUE_UNDERGROUND) &&
-            (plotScanTargetPos.get() == null || newPos.isInRange(plotScanTargetPos.get(),0.01))
+            (plotScanTargetPos.get() == null || newPos.closerThan(plotScanTargetPos.get(),0.01))
         ) {
             ptpFuture.complete(Optional.of(newPos));
         }
@@ -592,12 +592,12 @@ implements
             mode != Mode.SPAWN &&
             slot == 37 &&
             newItem.getItem() == Items.COMPARATOR &&
-            newItem.getComponents().contains(DataComponentTypes.CUSTOM_DATA) &&
+            newItem.getComponents().has(DataComponents.CUSTOM_DATA) &&
             Objects.equals(PREFERENCES_ITEM_NAME, newItem.getCustomName()) &&
-            Objects.equals(PREFERENCES_ITEM_TOOLTIP, newItem.getTooltip(Item.TooltipContext.DEFAULT, TCClient.MCI.player, TooltipType.BASIC).get(1))
+            Objects.equals(PREFERENCES_ITEM_TOOLTIP, newItem.getTooltipLines(Item.TooltipContext.EMPTY, TCClient.MCI.player, TooltipFlag.NORMAL).get(1))
         ) {
-            NbtCompound customData = newItem.get(DataComponentTypes.CUSTOM_DATA).copyNbt();
-            Optional<NbtCompound> publicBukkitValues = customData.getCompound("PublicBukkitValues");
+            CompoundTag customData = newItem.get(DataComponents.CUSTOM_DATA).copyTag();
+            Optional<CompoundTag> publicBukkitValues = customData.getCompound("PublicBukkitValues");
             if (
                 publicBukkitValues.isPresent() &&
                 publicBukkitValues.get().getString("hypercube:item_instance").isPresent()
@@ -607,7 +607,7 @@ implements
         }
     }
 
-    public void onChatMessage(Text message) {
+    public void onChatMessage(Component message) {
         String messageStr = message.getString();
         String[] messageStrLines = messageStr.split("\n");
 
@@ -702,7 +702,7 @@ implements
         }
     }
 
-    public void onTickEnd(MinecraftClient client) {
+    public void onTickEnd(Minecraft client) {
         t++;
         //=- figure out rank -=\\
         if (rank == null && t % 20 == 0 && !hideNextWhois && mode != Mode.PLAY && !TCClient.loadedChunks.isEmpty()) {
@@ -733,7 +733,7 @@ implements
 
             TCClient.MOVEMENT_MANAGER.setMovementDestination(
                 TCClient.DF_STATE.toPlotSpace(
-                    TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3d(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
+                    TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
                 ),
                 "SCAN_QUEUED_CHUNK"
             );
@@ -745,7 +745,7 @@ implements
         }
 
         if (nextChunkToScan == null && queuedChunkRescans.isEmpty() && scanState == ScanState.SCANNING_CODE) {
-            TCClient.safeMessage(Text.literal("Plot scan complete!"));
+            TCClient.safeMessage(Component.literal("Plot scan complete!"));
             setScanState(ScanState.SCANNED);
             APIServer.resolvePendingRequests(request -> {
                 if (request instanceof RescanPlotA2CRequest r) {
@@ -775,21 +775,21 @@ implements
     }
 
     @Override
-    public void onChunkDelta(ChunkDeltaUpdateS2CPacket packet) {
-        packet.visitUpdates((blockPos, blockState) -> {
-            Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+    public void onChunkDelta(ClientboundSectionBlocksUpdatePacket packet) {
+        packet.runUpdates((blockPos, blockState) -> {
+            Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
             if (plotOrigin == null) return;
 
             // rescanning
-            BlockPos immutablePos = blockPos.toImmutable();
+            BlockPos immutablePos = blockPos.immutable();
             queuedBlockRescans.add(immutablePos);
         });
     }
 
     @Override
-    public void onBlockEntityUpdate(BlockEntityUpdateS2CPacket packet) {
-        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+    public void onBlockEntityUpdate(ClientboundBlockEntityDataPacket packet) {
+        Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
         if (plotOrigin == null) return;
-        queuedBlockRescans.add(packet.getPos().toImmutable());
+        queuedBlockRescans.add(packet.getPos().immutable());
     }
 }

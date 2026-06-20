@@ -1,26 +1,30 @@
 package owlfroggy.terracottaclient;
 
 import com.google.gson.JsonObject;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.GameOptions;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtByte;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtInt;
-import net.minecraft.network.packet.c2s.play.PlayerActionC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
-import net.minecraft.network.packet.s2c.play.ChunkDeltaUpdateS2CPacket;
-import net.minecraft.util.Hand;
-import net.minecraft.util.PlayerInput;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.math.*;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Options;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.nbt.ByteTag;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
@@ -94,8 +98,8 @@ implements
         stagedCodeEdits.clear();
         codeEditsByPlotPos.clear();
         currentBatchCoreEdit = null;
-        oldOffhandItem = TCClient.MCI.player.getInventory().getStack(PlayerInventory.OFF_HAND_SLOT);
-        oldFirstSlotItem = TCClient.MCI.player.getInventory().getStack(TEMPLATE_VACUUM_SLOT);
+        oldOffhandItem = TCClient.MCI.player.getInventory().getItem(Inventory.SLOT_OFFHAND);
+        oldFirstSlotItem = TCClient.MCI.player.getInventory().getItem(TEMPLATE_VACUUM_SLOT);
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(true);
 
         //TODO: make it be able to take positions from templates that are being deleted
@@ -211,19 +215,19 @@ implements
     }
 
     @Override
-    public void onTickEnd(MinecraftClient client) {
+    public void onTickEnd(Minecraft client) {
         if (!TCClient.DF_STATE.isScanned()) return;
 
         if (TCClient.DF_STATE.getMode() == DFState.Mode.DEV) {
             codeEditLogic: if (editState != GlobalEditState.IDLE) {
                 // break out of editor mode if all edits have been completed
                 if (queuedCodeEdits.isEmpty() && stagedCodeEdits.isEmpty()) {
-                    Utils.setItemInSlot(PlayerInventory.OFF_HAND_SLOT, oldOffhandItem);
+                    Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
                     Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
 
                     TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
 
-                    client.player.playerScreenHandler.sendContentUpdates();
+                    client.player.inventoryMenu.broadcastChanges();
                     editState = GlobalEditState.IDLE;
 
                     APIServer.resolvePendingRequests(r -> {
@@ -242,7 +246,7 @@ implements
                         // stage new edits
                         if (stagedCodeEdits.isEmpty()) {
                             // find the closest edit to the player and make that the core edit
-                            Vec3d playerPos = TCClient.MCI.player.getEntityPos();
+                            Vec3 playerPos = TCClient.MCI.player.position();
                             CodeEdit coreEdit = null;
                             double minDistance = 999999999.0; //refactor this when world plots come out fr fr
                             for (CodeEdit edit : queuedCodeEdits) {
@@ -260,7 +264,7 @@ implements
                             // stage all edits which are within placing range of this edit
                             for (int i = queuedCodeEdits.size()-1; i >= 0; i--) {
                                 CodeEdit edit = queuedCodeEdits.get(i);
-                                if (edit.plotSpacePos.isWithinDistance(coreEdit.plotSpacePos,60.0)) {
+                                if (edit.plotSpacePos.closerThan(coreEdit.plotSpacePos,60.0)) {
                                     queuedCodeEdits.remove(i);
                                     stagedCodeEdits.add(edit);
                                 }
@@ -271,10 +275,10 @@ implements
 
                         // move to the right place
                         if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
-                            Vec3d goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3d(0.5,2.2,0.5));
+                            Vec3 goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3(0.5,2.2,0.5));
 
                             // if movement is complete, switch to editing mode
-                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.getEntityPos()) < 1) {
+                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.position()) < 1) {
                                 editState = GlobalEditState.EDITING;
                             } else {
                                 TCClient.MOVEMENT_MANAGER.setMovementDestination(
@@ -287,9 +291,9 @@ implements
 
                     case EDITING -> {
                         // if the player got moved away from the core edit, move them back
-                        Vec3d playerPos = client.player.getEntityPos();
-                        Vec3d coreEditPos = Utils.toVec3d(TCClient.DF_STATE.toWorldSpace(currentBatchCoreEdit.plotSpacePos));
-                        if (!playerPos.isWithinRangeOf(coreEditPos,4,4)) {
+                        Vec3 playerPos = client.player.position();
+                        Vec3 coreEditPos = Utils.toVec3d(TCClient.DF_STATE.toWorldSpace(currentBatchCoreEdit.plotSpacePos));
+                        if (!playerPos.closerThan(coreEditPos,4,4)) {
                             editState = GlobalEditState.MOVING;
                             break codeEditLogic;
                         }
@@ -321,10 +325,10 @@ implements
                                 if (activeEdit.state == CodeEdit.State.WAITING_FOR_BREAK_VERIFICATION || activeEdit.state == CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION) {
                                     activeEdit.inactivityCycles += 1;
                                 }
-                                int maxInactivityCycles = 10 + client.getNetworkHandler().getPlayerListEntry(client.player.getUuid()).getLatency()*50/1000;
+                                int maxInactivityCycles = 10 + client.getConnection().getPlayerInfo(client.player.getUUID()).getLatency()*50/1000;
                                 CodeEdit.State oldState = activeEdit.state;
                                 if (activeEdit.inactivityCycles > maxInactivityCycles) {
-                                    if (client.world.getBlockState(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
+                                    if (client.level.getBlockState(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
                                         activeEdit.state = switch (activeEdit.action) {
                                             case REPLACE, PLACE -> CodeEdit.State.PLACING;
                                             case BREAK -> CodeEdit.State.DONE;
@@ -351,78 +355,78 @@ implements
 
                         switch (activeEdit.state) {
                             case BREAKING -> {
-                                GameOptions settings = TCClient.MCI.options;
+                                Options settings = TCClient.MCI.options;
 
                                 // clear a slot for the new template to go into
                                 // (so a billion dropped items dont spawn)
                                 Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT,new ItemStack(Items.AIR),true);
                                 // make sure reach is extended
-                                Utils.setItemInSlot(PlayerInventory.OFF_HAND_SLOT,REACH_EXTENDER,true);
+                                Utils.setItemInSlot(Inventory.SLOT_OFFHAND,REACH_EXTENDER,true);
 
                                 // sneak
-                                PlayerInput sneakInput = new PlayerInput(
-                                    settings.forwardKey.isPressed(),
-                                    settings.backKey.isPressed(),
-                                    settings.leftKey.isPressed(),
-                                    settings.rightKey.isPressed(),
-                                    settings.jumpKey.isPressed(),
+                                Input sneakInput = new Input(
+                                    settings.keyUp.isDown(),
+                                    settings.keyDown.isDown(),
+                                    settings.keyLeft.isDown(),
+                                    settings.keyRight.isDown(),
+                                    settings.keyJump.isDown(),
                                     true,
-                                    settings.sprintKey.isPressed()
+                                    settings.keySprint.isDown()
                                 );
-                                client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(sneakInput));
+                                client.getConnection().send(new ServerboundPlayerInputPacket(sneakInput));
 
                                 // break
                                 BlockPos pos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
-                                ((SequencedPacketAccessor)client.interactionManager).invokeSendSequencedPacket(TCClient.MCI.world, sequence -> {
-                                    TCClient.MCI.interactionManager.breakBlock(pos);
-                                    return new PlayerActionC2SPacket(PlayerActionC2SPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
+                                ((SequencedPacketAccessor)client.gameMode).invokeStartPrediction(TCClient.MCI.level, sequence -> {
+                                    TCClient.MCI.gameMode.destroyBlock(pos);
+                                    return new ServerboundPlayerActionPacket(net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
                                 });
 
                                 // unsneak
-                                PlayerInput unsneakInput = new PlayerInput(
-                                    settings.forwardKey.isPressed(),
-                                    settings.backKey.isPressed(),
-                                    settings.leftKey.isPressed(),
-                                    settings.rightKey.isPressed(),
-                                    settings.jumpKey.isPressed(),
-                                    settings.sneakKey.isPressed(),
-                                    settings.sprintKey.isPressed()
+                                Input unsneakInput = new Input(
+                                    settings.keyUp.isDown(),
+                                    settings.keyDown.isDown(),
+                                    settings.keyLeft.isDown(),
+                                    settings.keyRight.isDown(),
+                                    settings.keyJump.isDown(),
+                                    settings.keyShift.isDown(),
+                                    settings.keySprint.isDown()
                                 );
-                                client.getNetworkHandler().sendPacket(new PlayerInputC2SPacket(unsneakInput));
+                                client.getConnection().send(new ServerboundPlayerInputPacket(unsneakInput));
 
                                 activeEdit.state = CodeEdit.State.WAITING_FOR_BREAK_VERIFICATION;
                             }
                             case PLACING -> {
                                 // create code template item
                                 ItemStack item = new ItemStack(Items.LIGHT_BLUE_TERRACOTTA);
-                                NbtCompound root = new NbtCompound();
+                                CompoundTag root = new CompoundTag();
 
-                                NbtCompound publicBukkitValues = new NbtCompound();
+                                CompoundTag publicBukkitValues = new CompoundTag();
                                 String templateData = String.format("""
                                 {"author":"Terracotta Client","name":"Compiled Template","version":1,"code":"%s" }
                                 """, activeEdit.templateData);
                                 publicBukkitValues.putString("hypercube:codetemplatedata", templateData);
                                 root.put("PublicBukkitValues", publicBukkitValues);
 
-                                NbtCompound terracottaData = new NbtCompound();
-                                terracottaData.put("hidden", NbtByte.of(true));
-                                terracottaData.put("instance", NbtInt.of(TCClient.INSTANCE_ID));
+                                CompoundTag terracottaData = new CompoundTag();
+                                terracottaData.put("hidden", ByteTag.valueOf(true));
+                                terracottaData.put("instance", IntTag.valueOf(TCClient.INSTANCE_ID));
                                 root.put("terracotta_metadata",terracottaData);
 
-                                item.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(root));
+                                item.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
                                 Utils.applyReachToItem(item,"editor_reach_thingy");
 
-                                Utils.setItemInSlot(PlayerInventory.OFF_HAND_SLOT, item);
+                                Utils.setItemInSlot(Inventory.SLOT_OFFHAND, item);
 
                                 // place item
                                 BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
                                 BlockHitResult hit = new BlockHitResult(
-                                    blockPos.toBottomCenterPos(),
+                                    blockPos.getBottomCenter(),
                                     Direction.DOWN,
                                     blockPos,
                                     false
                                 );
-                                TCClient.MCI.interactionManager.interactBlock(client.player,Hand.OFF_HAND, hit);
+                                TCClient.MCI.gameMode.useItemOn(client.player, InteractionHand.OFF_HAND, hit);
 
                                 activeEdit.state = CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION;
                             }
@@ -438,12 +442,12 @@ implements
     public void onChunkLoad(ChunkPos chunkPos) {}
 
     @Override
-    public void onChunkDelta(ChunkDeltaUpdateS2CPacket packet) {
-        packet.visitUpdates((blockPos, blockState) -> {
-            Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+    public void onChunkDelta(ClientboundSectionBlocksUpdatePacket packet) {
+        packet.runUpdates((blockPos, blockState) -> {
+            Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
             if (plotOrigin == null) return;
 
-            BlockPos immutablePos = blockPos.toImmutable();
+            BlockPos immutablePos = blockPos.immutable();
 
             Vec3i plotSpacePos = TCClient.DF_STATE.toPlotSpace(immutablePos);
             processCodeEditResponse(plotSpacePos,blockState,false);
@@ -451,11 +455,11 @@ implements
     }
 
     @Override
-    public void onBlockEntityUpdate(BlockEntityUpdateS2CPacket packet) {}
+    public void onBlockEntityUpdate(ClientboundBlockEntityDataPacket packet) {}
 
     @Override
     public void onClientBlockUpdate(BlockPos pos, BlockState state) {
-        Vec3d plotOrigin = TCClient.DF_STATE.getPlotOrigin();
+        Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
         if (plotOrigin == null) return;
 
         processCodeEditResponse(TCClient.DF_STATE.toPlotSpace(pos), state,true);

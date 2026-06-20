@@ -1,8 +1,8 @@
 package owlfroggy.terracottaclient;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.core.Vec3i;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
@@ -19,8 +19,8 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
 
     public static final double MOVEMENT_SPEED = 50; //50;
 
-    private Vec3d destinationPos;
-    private Vec3d assumedPlayerPos;
+    private Vec3 destinationPos;
+    private Vec3 assumedPlayerPos;
     private MovementState currentMovementState = MovementState.NOT_MOVING;
     /**
      * Will be "" (empty string) if no movement is active
@@ -32,7 +32,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     private int idleTicks = 0;
 
     @Override
-    public void onTickEnd(MinecraftClient client) {
+    public void onTickEnd(Minecraft client) {
         if (TCClient.MCI.player == null) return;
         if (TCClient.DF_STATE.getMode() != DFState.Mode.DEV) stopMovement();
 
@@ -51,38 +51,38 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
             currentMovementState = MovementState.ALIGN_XZ;
         }
 
-        Vec3d targetPos;
+        Vec3 targetPos;
         switch (currentMovementState) {
-            case AVOID_CODE -> targetPos = new Vec3d(assumedPlayerPos.x, assumedPlayerPos.y - (assumedPlayerPos.y%5) + 2.2, assumedPlayerPos.z);
-            case ALIGN_XZ -> targetPos = new Vec3d(destinationPos.x, assumedPlayerPos.y, destinationPos.z);
-            case ALIGN_Y -> targetPos = new Vec3d(assumedPlayerPos.x, destinationPos.y, assumedPlayerPos.z);
+            case AVOID_CODE -> targetPos = new Vec3(assumedPlayerPos.x, assumedPlayerPos.y - (assumedPlayerPos.y%5) + 2.2, assumedPlayerPos.z);
+            case ALIGN_XZ -> targetPos = new Vec3(destinationPos.x, assumedPlayerPos.y, destinationPos.z);
+            case ALIGN_Y -> targetPos = new Vec3(assumedPlayerPos.x, destinationPos.y, assumedPlayerPos.z);
             default -> { return; }
         }
 
         if (!TCClient.MCI.player.getAbilities().flying) {
             TCClient.MCI.player.getAbilities().flying = true;
-            TCClient.MCI.player.sendAbilitiesUpdate();
+            TCClient.MCI.player.onUpdateAbilities();
         }
 
         double dist = targetPos.distanceTo(assumedPlayerPos);
-        Vec3d movementVec = targetPos.subtract(assumedPlayerPos).normalize().multiply(Math.min(dist,MOVEMENT_SPEED));
+        Vec3 movementVec = targetPos.subtract(assumedPlayerPos).normalize().scale(Math.min(dist,MOVEMENT_SPEED));
         assumedPlayerPos = assumedPlayerPos.add(movementVec);
-        TCClient.MCI.player.setPosition(assumedPlayerPos);
+        TCClient.MCI.player.setPos(assumedPlayerPos);
 
         // if we're already at the position, don't bother waiting around for extra ticks
-        if (assumedPlayerPos.isInRange(destinationPos,0.01)) {
+        if (assumedPlayerPos.closerThan(destinationPos,0.01)) {
             stopMovement();
-            TCClient.MCI.player.setVelocity(0,0,0);
+            TCClient.MCI.player.setDeltaMovement(0,0,0);
             return;
         }
 
         if (dist < MOVEMENT_SPEED) {
             currentMovementState = MovementState.values()[(currentMovementState.ordinal() + 1) % 4];
-            TCClient.MCI.player.setVelocity(0,0,0);
+            TCClient.MCI.player.setDeltaMovement(0,0,0);
         }
     }
 
-    public void onTeleported(Vec3d newPos, Vec3d oldPos) {
+    public void onTeleported(Vec3 newPos, Vec3 oldPos) {
         if (currentMovementState != MovementState.NOT_MOVING) {
             assumedPlayerPos = newPos;
             currentMovementState = MovementState.AVOID_CODE;
@@ -93,11 +93,11 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
      * Note: this function assumes that the target is not in a block
      * @param plotSpaceDestination The position to move to
      */
-    public void setMovementDestination(Vec3d plotSpaceDestination, String movementId) {
+    public void setMovementDestination(Vec3 plotSpaceDestination, String movementId) {
         if (TCClient.MCI.player == null) return;
 
         if (!movementSpeedIsModified && TCClient.DF_STATE.hasRank(DFState.Rank.NOBLE)) {
-            oldMovementSpeed = (int)(TCClient.MCI.player.getAbilities().getFlySpeed()*100/.05);
+            oldMovementSpeed = (int)(TCClient.MCI.player.getAbilities().getFlyingSpeed()*100/.05);
             TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
             movementSpeedIsModified = true;
         }
@@ -105,14 +105,14 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         currentMovementId = movementId;
         currentMovementState = MovementState.AVOID_CODE;
         destinationPos = TCClient.DF_STATE.toWorldSpace(plotSpaceDestination);
-        assumedPlayerPos = TCClient.MCI.player.getEntityPos();
+        assumedPlayerPos = TCClient.MCI.player.position();
     }
-    public void setMovementDestination(Vec3d plotSpaceDestination) {
+    public void setMovementDestination(Vec3 plotSpaceDestination) {
         setMovementDestination(plotSpaceDestination, null);
     }
     public void setMovementDestination(Vec3i plotSpaceDestination, String movementId) {
         setMovementDestination(
-            new Vec3d(plotSpaceDestination.getX(), plotSpaceDestination.getY(), plotSpaceDestination.getZ()),
+            new Vec3(plotSpaceDestination.getX(), plotSpaceDestination.getY(), plotSpaceDestination.getZ()),
             movementId
         );
     }

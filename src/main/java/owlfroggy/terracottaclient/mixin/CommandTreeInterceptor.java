@@ -1,29 +1,29 @@
 package owlfroggy.terracottaclient.mixin;
 
 import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientCommandSource;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.network.packet.s2c.play.CommandTreeS2CPacket;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundCommandsPacket;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import owlfroggy.terracottaclient.TCClient;
 
-@Mixin(ClientPlayNetworkHandler.class)
+@Mixin(ClientPacketListener.class)
 public class CommandTreeInterceptor {
     @Inject(
-        method = "onCommandTree",
+        method = "handleCommands",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/network/PacketApplyBatcher;)V",
+            target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V",
             shift = At.Shift.AFTER
         )
     )
-    private void onCommandTreeReceived(CommandTreeS2CPacket packet, CallbackInfo ci) {
-        CommandDispatcher<ClientCommandSource> dispatcher = TCClient.MCI.getNetworkHandler().getCommandDispatcher();
+    private void onCommandTreeReceived(ClientboundCommandsPacket packet, CallbackInfo ci) {
+        CommandDispatcher<ClientSuggestionProvider> dispatcher = TCClient.MCI.getConnection().getCommands();
 
         boolean hasLagslayerCommand =
             dispatcher.getRoot()
