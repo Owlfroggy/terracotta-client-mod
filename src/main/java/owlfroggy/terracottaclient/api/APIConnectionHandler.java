@@ -11,7 +11,6 @@ import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.Utils;
 import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
-import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -229,13 +228,13 @@ public class APIConnectionHandler {
             ItemStack item = Utils.snbtToItem(r.getSnbt());
             try {
                 TCClient.MCI.execute(() -> {
-                    ItemRenderGenerator.renderToDataURI(item,2,image -> {
-                        if (image.equals("error")) {
-                            respond(r, new ErrorResponse(APIErrorCode.GENERIC_ERROR, "Item could not be rendered"));
-                        } else {
-                            respond(r, new RenderItemC2AResponse(image));
-                        }
-                    });
+//                    ItemRenderGenerator.renderToDataURI(item,2,image -> {
+//                        if (image.equals("error")) {
+//                            respond(r, new ErrorResponse(APIErrorCode.GENERIC_ERROR, "Item could not be rendered"));
+//                        } else {
+//                            respond(r, new RenderItemC2AResponse(image));
+//                        }
+//                    });
                 });
             } catch (Exception e) {
                 respond(r, new ErrorResponse(APIErrorCode.GENERIC_ERROR, "Item could not be rendered: " + e));

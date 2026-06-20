@@ -3,14 +3,14 @@ package owlfroggy.terracottaclient;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
@@ -32,7 +32,6 @@ import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
-import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -83,13 +82,13 @@ public class TCClient implements ClientModInitializer {
         CODE_EDIT_MANAGER = setupManager(new CodeEditManager());
         ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
 
-        WorldRenderEvents.END_MAIN.register(worldRenderContext -> {
+        LevelRenderEvents.END_MAIN.register(worldRenderContext -> {
             if (MCI.player == null) return;
             // queued chat messages
 
             Component[] messagesFrozen = queuedChatMessages.toArray(new Component[0]);
             for (Component msg : messagesFrozen) {
-                MCI.player.displayClientMessage(msg,false);
+                MCI.player.sendSystemMessage(msg);
             }
             queuedChatMessages.clear();
         });
@@ -114,11 +113,11 @@ public class TCClient implements ClientModInitializer {
 
         //tcallow
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager
+            dispatcher.register(ClientCommands
             .literal("tcallow")
             .requires(source -> isOnDiamondFire())
             .then(
-                ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
+                ClientCommands.argument("app_id", IntegerArgumentType.integer())
                 .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, true))
             ).executes(context -> {
                 context.getSource().sendError(Component.literal("No app id provided."));
@@ -127,11 +126,11 @@ public class TCClient implements ClientModInitializer {
         });
         //tcdeny
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager
+            dispatcher.register(ClientCommands
             .literal("tcdeny")
             .requires(source -> isOnDiamondFire())
             .then(
-                ClientCommandManager.argument("app_id", IntegerArgumentType.integer())
+                ClientCommands.argument("app_id", IntegerArgumentType.integer())
                 .executes(context -> TCClient.API_SERVER.decideAppAuthentication(context, false))
             ).executes(context -> {
                 context.getSource().sendError(Component.literal("No app id provided."));
@@ -140,7 +139,7 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager
+            dispatcher.register(ClientCommands
             .literal("terracotta_test")
             .executes(context -> {
                 context.getSource().sendFeedback(Component.literal(""+isOnDiamondFire()));
@@ -150,7 +149,7 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager
+            dispatcher.register(ClientCommands
             .literal("tcclientdfstate")
             .requires(source -> isOnDiamondFire())
             .executes(context -> {
@@ -170,7 +169,7 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager
+            dispatcher.register(ClientCommands
             .literal("rescanplot")
             .requires(source -> isOnDiamondFire())
             .executes(context -> {
@@ -180,7 +179,7 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("testplace").executes(context -> {
+            dispatcher.register(ClientCommands.literal("testplace").executes(context -> {
 //                context.getSource().sendFeedback(Text.literal(
 //                    TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(TEST_TEMPLATE_DATA)).toString()
 //                ));
@@ -209,7 +208,7 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("testbreak").executes(context -> {
+            dispatcher.register(ClientCommands.literal("testbreak").executes(context -> {
 //                context.getSource().sendFeedback(Text.literal(
 //                    TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(TEST_TEMPLATE_DATA)).toString()
 //                ));
@@ -234,7 +233,7 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager
+            dispatcher.register(ClientCommands
             .literal("dumptemplatecache")
             .requires(source -> isOnDiamondFire())
             .executes(context -> {
@@ -339,14 +338,10 @@ public class TCClient implements ClientModInitializer {
 
     public static boolean isChunkLoaded(ChunkPos chunkPos) {
 //        return loadedChunks.containsKey(chunkPos);
-        return MCI.level.isLoaded(new BlockPos(
-            chunkPos.x*16,
-            0,
-            chunkPos.z*16
-        ));
+        return MCI.level.hasChunk(chunkPos.x(), chunkPos.z());
     }
     public static boolean isChunkLoaded(BlockPos blockPos) {
-        return isChunkLoaded(new ChunkPos(blockPos));
+        return isChunkLoaded(new ChunkPos(blockPos.getX()*16, blockPos.getZ()*16));
     }
     public static boolean isChunkLoaded(Vec3i iPos) {
         return isChunkLoaded(new BlockPos(iPos));

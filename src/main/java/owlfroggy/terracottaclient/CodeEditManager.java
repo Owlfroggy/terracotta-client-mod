@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
@@ -77,7 +78,8 @@ implements
         IDLE,
     }
 
-    private final ItemStack REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
+    // TODO(UPDATE): fix reach extender
+    private ItemStack REACH_EXTENDER = null; //Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
     private static final int TEMPLATE_VACUUM_SLOT = 0;
 
     private GlobalEditState editState = GlobalEditState.IDLE;
@@ -88,6 +90,13 @@ implements
     private int stagedEditActiveIndex = 0;
     private ItemStack oldOffhandItem;
     private ItemStack oldFirstSlotItem;
+
+    private ItemStack getReachExtender() {
+        if (REACH_EXTENDER == null) {
+            this.REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
+        }
+        return this.REACH_EXTENDER;
+    }
 
     public void editCode(String[] placeTemplates, TemplateIdentifier[] breakTemplates) throws Exception {
         if (!TCClient.DF_STATE.isScanned()) {
@@ -198,7 +207,7 @@ implements
                     // block was successfully placed
                     if (
                         blockState.getBlock() != Blocks.AIR &&
-                        blockState.getBlock() != Blocks.LIGHT_BLUE_TERRACOTTA &&
+                        blockState.getBlock() != Blocks.DYED_TERRACOTTA.lightBlue() &&
                         !cameFromClient
                     ) {
                         edit.state = CodeEdit.State.DONE;
@@ -308,6 +317,7 @@ implements
                                 && TCClient.isChunkLoaded(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))
                             )
                         ) {
+//                            TCClient.LOGGER.info(""+TCClient.isChunkLoaded(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos)));
                             // don't loop endlessly if there are no actionable edits
                             if (checkedEdits > maxChecks) {
                                 break codeEditLogic; // basically just waits this tick out
@@ -361,7 +371,7 @@ implements
                                 // (so a billion dropped items dont spawn)
                                 Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT,new ItemStack(Items.AIR),true);
                                 // make sure reach is extended
-                                Utils.setItemInSlot(Inventory.SLOT_OFFHAND,REACH_EXTENDER,true);
+                                Utils.setItemInSlot(Inventory.SLOT_OFFHAND,getReachExtender(),true);
 
                                 // sneak
                                 Input sneakInput = new Input(
@@ -398,7 +408,7 @@ implements
                             }
                             case PLACING -> {
                                 // create code template item
-                                ItemStack item = new ItemStack(Items.LIGHT_BLUE_TERRACOTTA);
+                                ItemStack item = new ItemStack(Items.DYED_TERRACOTTA.lightBlue());
                                 CompoundTag root = new CompoundTag();
 
                                 CompoundTag publicBukkitValues = new CompoundTag();
@@ -421,7 +431,7 @@ implements
                                 // place item
                                 BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
                                 BlockHitResult hit = new BlockHitResult(
-                                    blockPos.getBottomCenter(),
+                                    new Vec3(blockPos),
                                     Direction.DOWN,
                                     blockPos,
                                     false

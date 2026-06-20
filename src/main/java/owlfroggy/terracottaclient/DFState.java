@@ -297,8 +297,8 @@ implements
     }
 
     public void processChunkTemplates(ChunkPos chunkPos) {
-        int chunkX = chunkPos.x;
-        int chunkZ = chunkPos.z;
+        int chunkX = chunkPos.x();
+        int chunkZ = chunkPos.z();
 
         Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
         if (plotOrigin == null) return;
@@ -307,10 +307,10 @@ implements
         if (queuedChunkRescans.contains(chunkPos)) {
             queuedChunkRescans.remove(chunkPos);
             // scanning progres report
-            TCClient.MCI.player.displayClientMessage(
+            TCClient.MCI.player.sendSystemMessage(
                 Component.nullToEmpty(
                    " Scanning codespace: " + (int)(100-(double)queuedChunkRescans.size()/TCClient.DF_STATE.getTotalCodespaceChunks()*100) + "%"
-                ), true
+                )
             );
         }
 
@@ -733,7 +733,7 @@ implements
 
             TCClient.MOVEMENT_MANAGER.setMovementDestination(
                 TCClient.DF_STATE.toPlotSpace(
-                    TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3(nextChunkToScan.x*16+16,52,nextChunkToScan.z*16+16))
+                    TCClient.DF_STATE.clampWorldPosToCodespace(new Vec3(nextChunkToScan.x()*16+16,52,nextChunkToScan.z()*16+16))
                 ),
                 "SCAN_QUEUED_CHUNK"
             );

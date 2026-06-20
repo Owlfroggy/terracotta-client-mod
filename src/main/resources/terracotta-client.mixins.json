@@ -21,13 +21,15 @@
     "ClientBlockUpdateInterceptor",
     "ClientCommandInterceptor",
     "CommandTreeInterceptor",
+    "ScreenOpenInterceptor",
+    "SequencedPacketAccessor"
+  ],
+  "disabledMixins": [
     "GuiRendererAccessor",
     "GuiRendererRetargeter",
     "HotbarItemDecorationDrawer",
     "InvSlotClickHandler",
     "ItemDecorationDrawer",
-    "ScreenOpenInterceptor",
-    "SequencedPacketAccessor",
     "SlotClickHandler"
   ]
 }
