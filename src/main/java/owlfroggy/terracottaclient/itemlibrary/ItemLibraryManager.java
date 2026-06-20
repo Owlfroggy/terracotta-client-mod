@@ -3,6 +3,7 @@ package owlfroggy.terracottaclient.itemlibrary;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.DataResult;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.DeltaTracker;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -223,50 +224,50 @@ implements
         }
     }
 
-//    public void applySlotDecoration(GuiGraphics context, Slot slot, int mouseX, int mouseY, CallbackInfo info) {
-//        ItemStack item = slot.getItem();
-//        LibraryItemEditData libraryData = getLibraryData(item);
-//
-//        if (libraryData == null) return;
-//
-//        context.blit(
-//        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_slot.png"),
-//        slot.x-2, slot.y-2,
-//        slot.x + 18, slot.y + 18,
-//        0, 1,
-//        0, 1
-//        );
-//    }
-//
-//    public void applyHotbarSlotDecoration(GuiGraphics context, int x, int y, ItemStack item, CallbackInfo info) {
-//        LibraryItemEditData libraryData = getLibraryData(item);
-//
-//        if (libraryData == null) return;
-//
-//        context.blit(
-//        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_slot.png"),
-//        x-2, y-2,
-//        x + 18, y + 18,
-//        0, 1,
-//        0, 1
-//        );
-//    }
-//
-//    public void applyHotbarSelectionDecoration(GuiGraphics context, DeltaTracker tickCounter, CallbackInfo info) {
-//        int selectedSlot = TCClient.MCI.player.getInventory().getSelectedSlot();
-//        ItemStack item = TCClient.MCI.player.getInventory().getItem(selectedSlot);
-//        LibraryItemEditData libraryData = TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item);
-//
-//        if (libraryData == null) return;
-//
-//        int x1 = context.guiWidth()/2 - 91 - 1 + selectedSlot * 20;
-//        int y1 = context.guiHeight() - 22 - 1;
-//        context.blit(
-//        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_selection.png"),
-//        x1, y1,
-//        x1 + 24, y1 + 23,
-//        0, 1,
-//        0, 1
-//        );
-//    }
+    public void applySlotDecoration(GuiGraphicsExtractor context, Slot slot, int mouseX, int mouseY, CallbackInfo info) {
+        ItemStack item = slot.getItem();
+        LibraryItemEditData libraryData = getLibraryData(item);
+
+        if (libraryData == null) return;
+
+        context.blit(
+            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_slot.png"),
+            slot.x-2, slot.y-2,
+            slot.x + 18, slot.y + 18,
+            0, 1,
+            0, 1
+        );
+    }
+
+    public void applyHotbarSlotDecoration(GuiGraphicsExtractor context, int x, int y, ItemStack item, CallbackInfo info) {
+        LibraryItemEditData libraryData = getLibraryData(item);
+
+        if (libraryData == null) return;
+
+        context.blit(
+        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_slot.png"),
+            x-2, y-2,
+            x + 18, y + 18,
+            0, 1,
+            0, 1
+        );
+    }
+
+    public void applyHotbarSelectionDecoration(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo info) {
+        int selectedSlot = TCClient.MCI.player.getInventory().getSelectedSlot();
+        ItemStack item = TCClient.MCI.player.getInventory().getItem(selectedSlot);
+        LibraryItemEditData libraryData = TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item);
+
+        if (libraryData == null) return;
+
+        int x1 = context.guiWidth()/2 - 91 - 1 + selectedSlot * 20;
+        int y1 = context.guiHeight() - 22 - 1;
+        context.blit(
+            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_selection.png"),
+            x1, y1,
+            x1 + 24, y1 + 23,
+            0, 1,
+            0, 1
+        );
+    }
 }

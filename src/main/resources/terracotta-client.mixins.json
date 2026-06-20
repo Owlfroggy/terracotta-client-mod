@@ -18,6 +18,8 @@
     "requireAnnotations": true
   },
   "client": [
+    "HotbarItemDecorationDrawer",
+    "ItemDecorationDrawer",
     "ClientBlockUpdateInterceptor",
     "ClientCommandInterceptor",
     "CommandTreeInterceptor",
@@ -27,9 +29,7 @@
     "GuiRendererAccessor"
   ],
   "disabledMixins": [
-    "HotbarItemDecorationDrawer",
     "InvSlotClickHandler",
-    "ItemDecorationDrawer",
     "SlotClickHandler"
   ]
 }
