@@ -31,6 +31,7 @@ import owlfroggy.terracottaclient.api.message.impl.ItemImageChangedC2ANotificati
 import owlfroggy.terracottaclient.api.message.impl.StopEditingItemC2ANotification;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 import owlfroggy.terracottaclient.gameinterface.TooltipRenderer;
+import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -202,12 +203,12 @@ implements
                     newSnbt
                 ));
                 editData.lastSnbt = newSnbt;
-//                ItemRenderGenerator.renderToDataURI(item,2,image -> {
-//                    APIServer.sendNotification(editData.appId, new ItemImageChangedC2ANotification(
-//                        editData.itemId,
-//                        image
-//                    ));
-//                });
+                ItemRenderGenerator.renderToDataURI(item,2,image -> {
+                    APIServer.sendNotification(editData.appId, new ItemImageChangedC2ANotification(
+                        editData.itemId,
+                        image
+                    ));
+                });
             }
         }
 

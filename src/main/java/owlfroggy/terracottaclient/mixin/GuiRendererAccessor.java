@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 @Mixin(GuiRenderer.class)
 public interface GuiRendererAccessor {
     @Invoker("draw")
-    void invokeRenderPreapredDraws(GpuBufferSlice fogBuffer);
+    void invokeRenderPreparedDraws();
     @Invoker("prepare")
     void invokePrepare();
 }

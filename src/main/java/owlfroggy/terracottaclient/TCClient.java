@@ -1,6 +1,8 @@
 package owlfroggy.terracottaclient;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.fabricmc.api.ClientModInitializer;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -12,6 +14,11 @@ import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +39,7 @@ import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
+import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -143,9 +151,53 @@ public class TCClient implements ClientModInitializer {
             .literal("terracotta_test")
             .executes(context -> {
                 context.getSource().sendFeedback(Component.literal(""+isOnDiamondFire()));
-//                MOVEMENT_MANAGER.setMovementDestination(new Vec3d(-6, 255, 0.5));
                 return 1;
             }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(
+                ClientCommands.literal("tcrenderhelditem")
+                    .executes(ctx -> {
+                        throw new CommandSyntaxException(
+                            CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument(),
+                            Component.literal("Missing renderScale argument")
+                        );
+                    })
+                    .then(ClientCommands.argument("renderScale", IntegerArgumentType.integer(1,64))
+                        .executes(ctx -> {
+                            throw new CommandSyntaxException(
+                                CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument(),
+                                Component.literal("Missing filePath argument")
+                            );
+                        })
+                        .then(ClientCommands.argument("filePath", StringArgumentType.greedyString())
+                            .executes(ctx -> {
+                                int renderScale = IntegerArgumentType.getInteger(ctx, "renderScale");
+                                String filePath = StringArgumentType.getString(ctx, "filePath");
+
+                                if (!filePath.toLowerCase(Locale.ROOT).endsWith(".png")) {
+                                    ctx.getSource().sendError(
+                                        Component.literal("File path must end with .png")
+                                    );
+                                    return 0;
+                                }
+
+                                ItemRenderGenerator.renderToFile(
+                                    filePath,
+                                    TCClient.MCI.player.getActiveItem(),
+                                    renderScale
+                                );
+
+                                ctx.getSource().sendFeedback(
+                                    Component.literal("Rendered item to " + filePath)
+                                );
+
+                                return 1;
+                            })
+                        )
+                    )
+            );
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

@@ -22,11 +22,11 @@
     "ClientCommandInterceptor",
     "CommandTreeInterceptor",
     "ScreenOpenInterceptor",
-    "SequencedPacketAccessor"
+    "SequencedPacketAccessor",
+    "GuiRendererRetargeter",
+    "GuiRendererAccessor"
   ],
   "disabledMixins": [
-    "GuiRendererAccessor",
-    "GuiRendererRetargeter",
     "HotbarItemDecorationDrawer",
     "InvSlotClickHandler",
     "ItemDecorationDrawer",
