@@ -338,13 +338,17 @@ public class TCClient implements ClientModInitializer {
 
     public static boolean isChunkLoaded(ChunkPos chunkPos) {
 //        return loadedChunks.containsKey(chunkPos);
-        return MCI.level.hasChunk(chunkPos.x(), chunkPos.z());
+        return MCI.level.isLoaded(new BlockPos(
+            chunkPos.x()*16,
+            0,
+            chunkPos.z()*16
+        ));
     }
     public static boolean isChunkLoaded(BlockPos blockPos) {
-        return isChunkLoaded(new ChunkPos(blockPos.getX()*16, blockPos.getZ()*16));
+        return isChunkLoaded(blockPos);
     }
     public static boolean isChunkLoaded(Vec3i iPos) {
-        return isChunkLoaded(new BlockPos(iPos));
+        return isChunkLoaded(new ChunkPos(iPos.getX()/16, iPos.getZ()/16));
     }
     public static boolean isChunkLoaded(Vec3 pos) {
         return isChunkLoaded(new Vec3i((int)pos.x,(int)pos.y,(int)pos.z));

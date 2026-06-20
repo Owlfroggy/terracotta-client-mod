@@ -317,7 +317,6 @@ implements
                                 && TCClient.isChunkLoaded(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))
                             )
                         ) {
-//                            TCClient.LOGGER.info(""+TCClient.isChunkLoaded(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos)));
                             // don't loop endlessly if there are no actionable edits
                             if (checkedEdits > maxChecks) {
                                 break codeEditLogic; // basically just waits this tick out
