@@ -42,12 +42,10 @@ public class ItemRenderGenerator {
             GpuBuffer buffer = RenderSystem.getDevice().createBuffer(() -> "Screenshot buffer", 9, (long)width * (long)height * (long)sourceTexture.getFormat().blockSize());
             RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(sourceTexture, buffer, 0L, () -> {
                 try (GpuBufferSlice.MappedView read = buffer.map(true, false)) {
-                    int outputHeight = height;
-                    int outputWidth = width;
-                    NativeImage image = new NativeImage(outputWidth, outputHeight, false);
+                    NativeImage image = new NativeImage(width, height, false);
 
-                    for(int y = 0; y < outputHeight; ++y) {
-                        for(int x = 0; x < outputWidth; ++x) {
+                    for(int y = 0; y < height; ++y) {
+                        for(int x = 0; x < width; ++x) {
                             int argb = read.data().getInt((x + y * width) * sourceTexture.getFormat().blockSize());
                             image.setPixelABGR(x, height - y - 1, argb);
                         }
@@ -63,41 +61,26 @@ public class ItemRenderGenerator {
 
     private static RenderTarget renderToFramebuffer(ItemStack itemStack, int renderScale) {
         Minecraft client = TCClient.MCI;
+
         GameRenderState gameState = new GameRenderState();
         gameState.windowRenderState.height = renderScale*16;
         gameState.windowRenderState.width = renderScale*16;
         gameState.windowRenderState.guiScale = renderScale;
-        GuiRenderState guiState = gameState.guiRenderState;
 
-        int wsf = client.getWindow().getGuiScale();
-        int wfx = client.getWindow().getWidth();
-        int wfy = client.getWindow().getHeight();
-        client.getWindow().setGuiScale(renderScale);
-        client.getWindow().setHeight(16 * renderScale);
-        client.getWindow().setWidth(16 * renderScale);
-////        client.getWindow().setWindowed(16, 16);
         RenderTarget renderTarget = new TextureTarget(
             "itemRender",
             16 * renderScale,
             16 * renderScale,
             true,
-                GpuFormat.RGBA8_UNORM // TODO: figure out what this should actually be
+                GpuFormat.RGBA8_UNORM // this HAS to be RGBA8_UNORM or else everything breakss
         );
-
-//        new GameRenderState().guiRenderState = guiState;
 
         int maxSectionBuilders = Runtime.getRuntime().availableProcessors();
         RenderBuffers renderBuffers = new RenderBuffers(maxSectionBuilders);
         RetargetableRenderer renderer = new RetargetableRenderer(
             renderTarget,
             gameState,
-            new FeatureRenderDispatcher(
-                renderBuffers,
-                TCClient.MCI.getModelManager(),
-                TCClient.MCI.getAtlasManager(),
-                TCClient.MCI.font,
-                gameState
-            ),
+            new FeatureRenderDispatcher(renderBuffers, TCClient.MCI.getModelManager(), TCClient.MCI.getAtlasManager(), TCClient.MCI.font, gameState),
             new ArrayList<>()
         );
 
@@ -105,21 +88,10 @@ public class ItemRenderGenerator {
         int mx = (int)client.mouseHandler.getScaledXPos(client.getWindow());
         int my = (int)client.mouseHandler.getScaledYPos(client.getWindow());
 
-//        drawContext.fill(0, 0, 16, 16, 0xFFFFFFFF);
-
-
-//        ((GuiRendererAccessor)renderer).invokePrepare();
-//        ((GuiRendererAccessor)renderer).invokeRenderPreparedDraws();
-
-        GuiGraphicsExtractor drawContext = new GuiGraphicsExtractor(client, guiState, mx, my);
+        GuiGraphicsExtractor drawContext = new GuiGraphicsExtractor(client, gameState.guiRenderState, mx, my);
         drawContext.item(itemStack,0,0);
 
         renderer.render();
-
-        client.getWindow().setGuiScale(wsf);
-        client.getWindow().setWidth(wfx);
-        client.getWindow().setHeight(wfy);
-        TCClient.MCI.resizeGui();
 
         return renderTarget;
     }
