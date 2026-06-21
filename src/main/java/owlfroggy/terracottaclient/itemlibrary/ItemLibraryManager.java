@@ -110,6 +110,7 @@ implements
         Utils.setItemInSlot(slot, item);
 
         LibraryItemEditData editData = new LibraryItemEditData(appId,editId,itemId,Utils.itemToSnbt(item));
+        markItemAsSeen(editData);
         activeEdits.put(editId, editData);
         activeEditsByItemId.put(itemId, editData);
     }
@@ -175,7 +176,10 @@ implements
         }
     }
 
-    private final Set<LibraryItemEditData> seenEdits = new HashSet<>();
+    private final Map<LibraryItemEditData, Integer> seenEdits = new HashMap<>();
+    private void markItemAsSeen(LibraryItemEditData editData) {
+        seenEdits.put(editData, seenEdits.getOrDefault(editData, 0)+1);
+    }
 
     @Override
     public void onTickEnd(Minecraft client) {
@@ -193,7 +197,7 @@ implements
             LibraryItemEditData editData = getLibraryData(item);
             if (editData == null) continue;
 
-            seenEdits.add(editData);
+            markItemAsSeen(editData);
 
             String oldSnbt = editData.lastSnbt;
             String newSnbt = Utils.itemToSnbt(item);
@@ -213,11 +217,12 @@ implements
             }
         }
 
-        // stop all edits whose items are no longer in the inventory
+        // stop all edits whose items are no longer in the inventory, have duplicate item stacks,
+        // or were being edited by an app that's no longer connected.
         for (LibraryItemEditData editData : activeEdits.values().stream().toList()) {
             if (
                 !APIServer.hasConnectedAppId(editData.appId)
-                || !seenEdits.contains(editData)
+                || seenEdits.getOrDefault(editData, 0) != 1
             ) {
                 stopEditingItem(editData);
             }
