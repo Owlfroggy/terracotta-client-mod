@@ -624,6 +624,11 @@ implements
         );
     }
 
+    public boolean isMessageFlightSpeed(Component message) {
+        String stringMessage = message.getString();
+        return stringMessage.startsWith("» Set fly speed to: ") && stringMessage.endsWith("% of default speed.");
+    }
+
     public void onTeleported(Vec3 newPos, Vec3 oldPos) {
         String dimensionNamespace = TCClient.MCI.level.dimension().identifier().getNamespace();
         if (

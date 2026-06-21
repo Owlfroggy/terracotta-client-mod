@@ -31,6 +31,8 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     private boolean holdFastSpeed = false;
     private int idleTicks = 0;
 
+    public boolean shouldHideNextFlightSpeedMsg = false;
+
     @Override
     public void onTickEnd(Minecraft client) {
         if (TCClient.MCI.player == null) return;
@@ -40,6 +42,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
             idleTicks++;
             if (idleTicks > 3 && movementSpeedIsModified && !holdFastSpeed) {
                 TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed "+oldMovementSpeed, DFState.Mode.DEV);
+                shouldHideNextFlightSpeedMsg = true;
                 movementSpeedIsModified = false;
             }
             return;
@@ -94,6 +97,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         if (!dimensionNamespace.equals(lastDimensionNamespace)) {
             if (movementSpeedIsModified) {
                 TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
+                shouldHideNextFlightSpeedMsg = true;
             }
             lastDimensionNamespace = dimensionNamespace;
         }
@@ -109,6 +113,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         if (!movementSpeedIsModified && TCClient.DF_STATE.hasRank(DFState.Rank.NOBLE)) {
             oldMovementSpeed = (int)(TCClient.MCI.player.getAbilities().getFlyingSpeed()*100/.05);
             TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
+            shouldHideNextFlightSpeedMsg = true;
             movementSpeedIsModified = true;
         }
 

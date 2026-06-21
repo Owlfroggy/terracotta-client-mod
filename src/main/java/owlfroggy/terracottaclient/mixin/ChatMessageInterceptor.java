@@ -27,6 +27,10 @@ public class ChatMessageInterceptor {
                 info.cancel();
             if (TCClient.DF_STATE.shouldHideNextWhois() && TCClient.DF_STATE.isMessageWhoisResult(packet.content()))
                 info.cancel();
+            if (TCClient.MOVEMENT_MANAGER.shouldHideNextFlightSpeedMsg && TCClient.DF_STATE.isMessageFlightSpeed(packet.content())) {
+                info.cancel();
+                TCClient.MOVEMENT_MANAGER.shouldHideNextFlightSpeedMsg = false;
+            }
 //            TCClient.LOGGER.info(packet.content().toString());
 
             TCClient.fireChatMessageReceivers(packet.content());
