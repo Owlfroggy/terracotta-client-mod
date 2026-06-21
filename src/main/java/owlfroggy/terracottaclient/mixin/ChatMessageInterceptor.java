@@ -23,7 +23,7 @@ public class ChatMessageInterceptor {
                 info.cancel();
             if (shouldSupprsesOOB && TCClient.DF_STATE.isMessageOutOfBoundsError(packet.content()))
                 info.cancel();
-            if (isEditingCode && TCClient.DF_STATE.isMessageFuncRenameHint(packet.content()))
+            if (isEditingCode && TCClient.DF_STATE.isMessageCodeEditSpam(packet.content()))
                 info.cancel();
             if (TCClient.DF_STATE.shouldHideNextWhois() && TCClient.DF_STATE.isMessageWhoisResult(packet.content()))
                 info.cancel();

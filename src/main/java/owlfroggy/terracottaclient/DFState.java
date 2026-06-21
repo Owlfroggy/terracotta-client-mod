@@ -614,8 +614,14 @@ implements
         return message.equals(OUT_OF_BOUNDS_TEXT);
     }
 
-    public boolean isMessageFuncRenameHint(Component message) {
-        return message.equals(FUNC_RENAME_HINT_TEXT);
+    public boolean isMessageCodeEditSpam(Component message) {
+        String stringMessage = message.getString();
+        return (
+            message.equals(FUNC_RENAME_HINT_TEXT)
+            || stringMessage.startsWith("» ") && stringMessage.endsWith(" was broken.")
+            || stringMessage.equals("Note: You can view your past 5 created templates with /templatehistory!")
+            || stringMessage.equals("Error: Invalid template placement.")
+        );
     }
 
     public void onTeleported(Vec3 newPos, Vec3 oldPos) {
