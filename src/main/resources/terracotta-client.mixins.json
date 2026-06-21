@@ -27,9 +27,5 @@
     "SequencedPacketAccessor",
     "GuiRendererRetargeter",
     "GuiRendererAccessor"
-  ],
-  "disabledMixins": [
-    "InvSlotClickHandler",
-    "SlotClickHandler"
   ]
 }
