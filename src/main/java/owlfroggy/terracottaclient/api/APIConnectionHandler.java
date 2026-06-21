@@ -7,6 +7,7 @@ import net.minecraft.util.CommonColors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import owlfroggy.terracottaclient.DFState;
+import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.Utils;
 import owlfroggy.terracottaclient.api.message.*;
@@ -90,7 +91,7 @@ public class APIConnectionHandler {
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
             respond (r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
-            TCClient.safeMessage(Component.literal("authed "+appName).withColor(CommonColors.GREEN));
+            MsgHelper.safeMessage(Component.literal("authed "+appName).withColor(CommonColors.GREEN));
             sendInitialState();
         }
     }
@@ -129,7 +130,7 @@ public class APIConnectionHandler {
 
             authenticationRequest = r;
 
-            TCClient.safeMessage(Component.literal(
+            MsgHelper.safeTCMessage(Component.literal(
                 r.getAppName() + "is tryin  to connect w/ permissions: " + r.getPermissions().toString()
                 + "     & appid = " + getId()
             ));
@@ -139,7 +140,7 @@ public class APIConnectionHandler {
             if (token == null) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
-                TCClient.safeMessage(Component.literal(
+                MsgHelper.safeTCMessage(Component.literal(
                     "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
                 ));
                 this.token = token;

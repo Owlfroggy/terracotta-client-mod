@@ -14,11 +14,6 @@ import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
@@ -77,7 +72,6 @@ public class TCClient implements ClientModInitializer {
     private static final ArrayList<TooltipRenderer> tooltipRenderers = new ArrayList<>();
 
     public static final HashMap<ChunkPos, LevelChunk> loadedChunks = new HashMap<>();
-    private static final List<Component> queuedChatMessages = new ArrayList<>();
     private static boolean serverIsDiamondFire = false;
 
     private static int ticksUntilTryAPIServer = 0;
@@ -90,16 +84,7 @@ public class TCClient implements ClientModInitializer {
         CODE_EDIT_MANAGER = setupManager(new CodeEditManager());
         ITEM_LIBRARY_MANAGER = setupManager(new ItemLibraryManager());
 
-        LevelRenderEvents.END_MAIN.register(worldRenderContext -> {
-            if (MCI.player == null) return;
-            // queued chat messages
-
-            Component[] messagesFrozen = queuedChatMessages.toArray(new Component[0]);
-            for (Component msg : messagesFrozen) {
-                MCI.player.sendSystemMessage(msg);
-            }
-            queuedChatMessages.clear();
-        });
+        MsgHelper.initSafeMessenger();
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
            if (API_SERVER != null) {
@@ -150,7 +135,7 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("terracotta_test")
             .executes(context -> {
-                context.getSource().sendFeedback(Component.literal(""+isOnDiamondFire()));
+                MsgHelper.sendMessage(Component.literal(""+isOnDiamondFire()));
                 return 1;
             }));
         });
@@ -421,7 +406,7 @@ public class TCClient implements ClientModInitializer {
     }
 
     public static void fireModeChangeReceivers(DFState.Mode newMode) {
-        safeMessage(Component.literal("mode change detected :D (" + newMode.toString() + ")"));
+        MsgHelper.safeMessage(Component.literal("mode change detected :D (" + newMode.toString() + ")"));
         APIServer.broadcastNotification(new ModeChangedC2ANotification(newMode));
         for (ModeChangeReceiver receiver : modeChangeReceivers) {
             receiver.onModeChanged(newMode);
@@ -479,16 +464,6 @@ public class TCClient implements ClientModInitializer {
         for (ClientCommandReceiver receiver : clientCommandReceivers) {
             receiver.onClientSendCommand(command);
         }
-    }
-
-    /**
-     * Schedules a chat message to be sent at the end of the frame;
-     * ensures that the message is always sent from the render thread.
-     * Messages will be sent in the order they are queued.
-     * @param text The message to send.
-     */
-    public static void safeMessage(Component text) {
-        queuedChatMessages.add(text);
     }
 
     private <T extends Manager> T setupManager(T manager) {

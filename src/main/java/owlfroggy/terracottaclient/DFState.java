@@ -1,5 +1,7 @@
 package owlfroggy.terracottaclient;
 
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Style;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -14,9 +16,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
 import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
@@ -81,6 +81,26 @@ implements
         SCANNING_CODE,
         SCANNED
     }
+    static final Component PREFERENCES_ITEM_NAME = (
+        Component.empty().setStyle(Style.EMPTY.withItalic(false))
+            .append(Component.literal("◇ ").withColor(0x7F7F2A))
+            .append(Component.literal("Preferences").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(" ◇").withColor(0x7F7F2A))
+    );
+    public static final Component PREFERENCES_ITEM_TOOLTIP = (
+        Component.empty().withStyle(ChatFormatting.DARK_PURPLE, ChatFormatting.ITALIC)
+            .append(
+                Component.literal("Edit your preferences here.").setStyle(
+                    Style.EMPTY
+                        .withColor(ChatFormatting.GRAY)
+                        .withItalic(false)
+                        .withBold(false)
+                        .withUnderlined(false)
+                        .withStrikethrough(false)
+                        .withObfuscated(false)
+                )
+            )
+    );
 
     public static final HashMap<PlotType, Integer> CODESPACE_Z_SIZES = new HashMap<>(Map.of(
         PlotType.BASIC, 51,
@@ -106,40 +126,6 @@ implements
     private static final Pattern PLOT_REGEX = Pattern.compile("^→ (.+) \\[(\\d+)");
     private static final double TP_MAGIC_Y_VALUE = 52.15763;
     private static final double TP_MAGIC_Y_VALUE_UNDERGROUND = TP_MAGIC_Y_VALUE - 12;
-    private static final Component OUT_OF_BOUNDS_TEXT = (
-        Component.empty()
-        .append(Component.literal("Error: ").withStyle(ChatFormatting.RED))
-        .append(Component.literal("That location is out of bounds!").withStyle(ChatFormatting.GRAY))
-    );
-    private static final Component FUNC_RENAME_HINT_TEXT = (
-        Component.empty()
-        .append(Component.literal("Right click the sign while holding a ").withStyle(ChatFormatting.YELLOW))
-        .append(Component.literal("String").withStyle(ChatFormatting.AQUA))
-        .append(Component.literal(" to name the Function.\n").withStyle(ChatFormatting.YELLOW))
-        .append(Component.literal("You can also use String on ").withStyle(ChatFormatting.YELLOW))
-        .append(Component.literal("Call Function").withColor(0xFF55AA))
-        .append(Component.literal(" blocks!").withStyle(ChatFormatting.YELLOW))
-    );
-    private static final Component PREFERENCES_ITEM_NAME = (
-        Component.empty().setStyle(Style.EMPTY.withItalic(false))
-        .append(Component.literal("◇ ").withColor(0x7F7F2A))
-        .append(Component.literal("Preferences").withStyle(ChatFormatting.YELLOW))
-        .append(Component.literal(" ◇").withColor(0x7F7F2A))
-    );
-    public static final Component PREFERENCES_ITEM_TOOLTIP = (
-        Component.empty().withStyle(ChatFormatting.DARK_PURPLE, ChatFormatting.ITALIC)
-        .append(
-            Component.literal("Edit your preferences here.").setStyle(
-                Style.EMPTY
-                .withColor(ChatFormatting.GRAY)
-                .withItalic(false)
-                .withBold(false)
-                .withUnderlined(false)
-                .withStrikethrough(false)
-                .withObfuscated(false)
-            )
-        )
-    );
 
     public boolean modeRefreshQueued = false;
 
@@ -542,8 +528,8 @@ implements
                     reverseZ = !reverseZ;
                 }
 
-                TCClient.safeMessage(Component.literal("Detected plot size:" + currentSizeGuess));
-                TCClient.safeMessage(Component.literal("Detected plot origin:" + plotOrigin));
+//                MsgHelper.safeMessage(Component.literal("Detected plot size:" + currentSizeGuess));
+//                MsgHelper.safeMessage(Component.literal("Detected plot origin:" + plotOrigin));
                 setScanState(ScanState.SCANNING_CODE);
             } catch (Exception e) {
                 failScan(e);
@@ -584,49 +570,6 @@ implements
     }
     public Vec3i toWorldSpace(BlockPos plotSpacePos) {
         return plotSpacePos.offset(getIntPlotOrigin());
-    }
-
-    public boolean isMessageLocateResult(Component message) {
-        String[] messageStrLines = message.getString().split("\n");
-        ClickEvent clickEvent = message.getStyle().getClickEvent();
-        // /locate parsing checks the click event since that cannot be faked by plots
-        return (
-            clickEvent instanceof ClickEvent.RunCommand(String command) &&
-            (command.startsWith("/server") || command.startsWith("/join")) &&
-            messageStrLines.length >= 2 &&
-            messageStrLines[1].startsWith("You are currently")
-        );
-    }
-
-    public boolean isMessageWhoisResult(Component message) {
-        String[] messageStrLines = message.getString().split("\n");
-        // /locate parsing checks the click event since that cannot be faked by plots
-        return (
-            messageStrLines.length >= 4
-            && messageStrLines[1].startsWith("Profile of ")
-            && messageStrLines[3].startsWith("→ Ranks: ")
-            && messageStrLines[4].startsWith("→ Badges: ")
-            && messageStrLines[5].startsWith("→ Joined: ")
-        );
-    }
-
-    public boolean isMessageOutOfBoundsError(Component message) {
-        return message.equals(OUT_OF_BOUNDS_TEXT);
-    }
-
-    public boolean isMessageCodeEditSpam(Component message) {
-        String stringMessage = message.getString();
-        return (
-            message.equals(FUNC_RENAME_HINT_TEXT)
-            || stringMessage.startsWith("» ") && stringMessage.endsWith(" was broken.")
-            || stringMessage.equals("Note: You can view your past 5 created templates with /templatehistory!")
-            || stringMessage.equals("Error: Invalid template placement.")
-        );
-    }
-
-    public boolean isMessageFlightSpeed(Component message) {
-        String stringMessage = message.getString();
-        return stringMessage.startsWith("» Set fly speed to: ") && stringMessage.endsWith("% of default speed.");
     }
 
     public void onTeleported(Vec3 newPos, Vec3 oldPos) {
@@ -678,11 +621,11 @@ implements
             queueModeRefresh();
         }
 
-        if (ptpFuture != null && !ptpFuture.isDone() && isMessageOutOfBoundsError(message)) {
+        if (ptpFuture != null && !ptpFuture.isDone() && MsgHelper.isMessageOutOfBoundsError(message)) {
             ptpFuture.complete(Optional.empty());
         }
 
-        locateParser: if (isMessageLocateResult(message)) {
+        locateParser: if (MsgHelper.isMessageLocateResult(message)) {
             Mode oldMode = mode;
 
             Matcher modeMatcher = MODE_REGEX.matcher(messageStrLines[1]);
@@ -730,7 +673,7 @@ implements
             }
         }
 
-        whoisParser: if (isMessageWhoisResult(message)) {
+        whoisParser: if (MsgHelper.isMessageWhoisResult(message)) {
             String playerName = TCClient.MCI.player.getName().getString();
             if (!messageStrLines[1].equals("Profile of "+playerName+ " "))
                 break whoisParser;
@@ -804,7 +747,7 @@ implements
         }
 
         if (nextChunkToScan == null && queuedChunkRescans.isEmpty() && scanState == ScanState.SCANNING_CODE) {
-            TCClient.safeMessage(Component.literal("Plot scan complete!"));
+            MsgHelper.safeTCMessage(Component.literal("Plot scan complete!"));
             setScanState(ScanState.SCANNED);
             APIServer.resolvePendingRequests(request -> {
                 if (request instanceof RescanPlotA2CRequest r) {
