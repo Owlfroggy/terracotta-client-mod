@@ -1,0 +1,28 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "terracotta-client:ui/terracotta_mini.png",
+      "ascent": 8,
+      "height": 8,
+      "chars": [
+        "t"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "terracotta-client:ui/terracotta_full.png",
+      "ascent": 8,
+      "height": 9,
+      "chars": [
+        "T"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        " ": 1
+      }
+    }
+  ]
+}

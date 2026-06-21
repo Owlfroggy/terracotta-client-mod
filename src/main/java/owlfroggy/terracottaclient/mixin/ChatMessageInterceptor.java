@@ -18,7 +18,6 @@ public class ChatMessageInterceptor {
             boolean shouldSupprsesOOB = TCClient.DF_STATE.getScanState() == DFState.ScanState.SCANNING_BOUNDS;
             boolean isEditingCode = TCClient.CODE_EDIT_MANAGER.isEditingCode();
 
-
             if (shouldSuppressLocate && TCClient.DF_STATE.isMessageLocateResult(packet.content()))
                 info.cancel();
             if (shouldSupprsesOOB && TCClient.DF_STATE.isMessageOutOfBoundsError(packet.content()))

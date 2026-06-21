@@ -241,7 +241,7 @@ implements
         if (libraryData == null) return;
 
         context.blit(
-            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_slot.png"),
+            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/ui/library_slot.png"),
             slot.x-2, slot.y-2,
             slot.x + 18, slot.y + 18,
             0, 1,
@@ -255,7 +255,7 @@ implements
         if (libraryData == null) return;
 
         context.blit(
-        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_slot.png"),
+        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/ui/library_hotbar_slot.png"),
             x-2, y-2,
             x + 18, y + 18,
             0, 1,
@@ -273,7 +273,7 @@ implements
         int x1 = context.guiWidth()/2 - 91 - 1 + selectedSlot * 20;
         int y1 = context.guiHeight() - 22 - 1;
         context.blit(
-            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"ui/library_hotbar_selection.png"),
+            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/ui/library_hotbar_selection.png"),
             x1, y1,
             x1 + 24, y1 + 23,
             0, 1,
