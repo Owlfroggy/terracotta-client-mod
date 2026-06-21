@@ -311,7 +311,7 @@ implements
         if (queuedChunkRescans.contains(chunkPos)) {
             queuedChunkRescans.remove(chunkPos);
             // scanning progres report
-            TCClient.MCI.player.sendSystemMessage(
+            TCClient.MCI.player.sendOverlayMessage(
                 Component.nullToEmpty(
                    " Scanning codespace: " + (int)(100-(double)queuedChunkRescans.size()/TCClient.DF_STATE.getTotalCodespaceChunks()*100) + "%"
                 )
