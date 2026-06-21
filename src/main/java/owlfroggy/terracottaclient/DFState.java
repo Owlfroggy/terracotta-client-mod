@@ -66,7 +66,8 @@ implements
         BASIC,
         LARGE,
         MASSIVE,
-        MEGA
+        MEGA,
+        WORLD,
     }
     public enum CodespaceCorner {
         FRONT_LEFT,
@@ -85,12 +86,14 @@ implements
         PlotType.BASIC, 51,
         PlotType.LARGE, 101,
         PlotType.MASSIVE, 301,
-        PlotType.MEGA, 300
+        PlotType.MEGA, 300,
+        PlotType.WORLD, 300
     ));public static final HashMap<PlotType, Integer> CODESPACE_X_SIZES = new HashMap<>(Map.of(
         PlotType.BASIC, 20,
         PlotType.LARGE, 20,
         PlotType.MASSIVE, 20,
-        PlotType.MEGA, 300
+        PlotType.MEGA, 300,
+        PlotType.WORLD, 300
     ));
     private final HashMap<String, TemplateType> NAMES_TO_TEMPLATE_TYPES = new HashMap<>(Map.of(
         "PLAYER EVENT", TemplateType.PLAYER_EVENT,
@@ -195,6 +198,7 @@ implements
     public boolean shouldHideNextWhois() { return hideNextWhois; }
 
     private int t = 0;
+    private boolean useWorldPlotScanRoutine = false;
 
     public boolean hasRank(Rank r) {
         return getRank().ordinal() >= r.ordinal();
@@ -411,7 +415,8 @@ implements
 
                 PlotType currentSizeGuess = PlotType.BASIC;
                 Optional<Vec3> teleportResult = Optional.empty();
-                Vec3 plotOriginGuess;
+                Vec3 plotOriginGuess = null;
+                useWorldPlotScanRoutine = false;
 
                 plotScanTargetPos.set(null);
                 doesHaveUndergroundCodespace = false;
@@ -423,54 +428,92 @@ implements
                 TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0", TP_MAGIC_Y_VALUE));
                 try {
                     Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
-                    if (result.isEmpty()) {
+                    if (result.isEmpty())
                         throw new RuntimeException("Failed to get plot origin");
+
+                    // if the player was teleported to a hypercube dimension, that means this is a world plot
+                    String dimensionNamespace = TCClient.MCI.level.dimension().identifier().getNamespace();
+                    if (dimensionNamespace.equals("hypercube")) {
+                        currentSizeGuess = PlotType.WORLD;
+                        useWorldPlotScanRoutine = true;
                     }
-                    plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
+                    // if the player stayed in the codespace, that means the plot origin is now known
+                    else {
+                        plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
+                    }
                 } catch (Exception e) {
                     throw new RuntimeException("Plot scan failed during origin fetch due to not receiving a teleport response");
                 }
 
-                // test for underground codespace
-                ptpFuture = new CompletableFuture<>();
-                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4", TP_MAGIC_Y_VALUE_UNDERGROUND));
-                try {
-                    Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
-                    if (result.isPresent()) doesHaveUndergroundCodespace = true;
-                } catch (Exception e) {
-                    throw new RuntimeException("Plot scan failed during underground codespace check due to not receiving a teleport response");
-                }
+                // world plot routine
+                if (useWorldPlotScanRoutine) {
+                    // teleport to codespace spawn and work out plot origin/underground status from there
+                    // it's fine to skip the size loop here since world plots can only ever have one size of codespace
+                    ptpFuture = new CompletableFuture<>();
+                    TCClient.COMMAND_MANAGER.queueCommand("p s -d");
+                    try {
+                        Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
+                        if (result.isEmpty()) throw new RuntimeException("Failed to get world plot data");
+                        Vec3 newPos = result.get();
 
-                // get plot size
-                sizeGuessLoop: while (getMode() == Mode.DEV) {
-                    Vec3 plotSpacePos;
-                    switch (currentSizeGuess) {
-                        case PlotType.BASIC -> plotSpacePos = new Vec3(-1, TP_MAGIC_Y_VALUE, 51);
-                        case PlotType.LARGE -> plotSpacePos = new Vec3(-1, TP_MAGIC_Y_VALUE, 101);
-                        case PlotType.MASSIVE -> plotSpacePos = new Vec3(-300, TP_MAGIC_Y_VALUE, 1);
-                        default -> {
-                            break sizeGuessLoop;
+                        doesHaveUndergroundCodespace = newPos.y == 5;
+                        plotOriginGuess = newPos.multiply(1.0,0.0,1.0).add(11.5, 0.0, -10.5);
+
+                        // wait until chunk loads or else things break spectacularly
+                        int ticksWaited = 0;
+                        while (!TCClient.isChunkLoaded(plotOriginGuess)) {
+                            if (ticksWaited > 20*5) throw new RuntimeException("Failed to get world plot data");
+                            Thread.sleep(50);
+                            ticksWaited++;
+                        }
+                    } catch (Exception e) {
+                        throw new RuntimeException("Plot scan failed during world plot data gathering due to not receiving a teleport response");
+                    }
+                }
+                // normal plot routine
+                else {
+                    // test for underground codespace
+                    ptpFuture = new CompletableFuture<>();
+                    TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4", TP_MAGIC_Y_VALUE_UNDERGROUND));
+                    try {
+                        Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
+                        if (result.isPresent()) doesHaveUndergroundCodespace = true;
+                    } catch (Exception e) {
+                        throw new RuntimeException("Plot scan failed during underground codespace check due to not receiving a teleport response");
+                    }
+
+                    // get plot size
+                    sizeGuessLoop: while (getMode() == Mode.DEV) {
+                        Vec3 plotSpacePos;
+                        switch (currentSizeGuess) {
+                            case PlotType.BASIC -> plotSpacePos = new Vec3(-1, TP_MAGIC_Y_VALUE, 51);
+                            case PlotType.LARGE -> plotSpacePos = new Vec3(-1, TP_MAGIC_Y_VALUE, 101);
+                            case PlotType.MASSIVE -> plotSpacePos = new Vec3(-300, TP_MAGIC_Y_VALUE, 1);
+                            default -> {
+                                break sizeGuessLoop;
+                            }
+                        }
+
+                        plotScanTargetPos.set(plotSpacePos.add(plotOriginGuess));
+                        String command = String.format("ptp %s %s %s", plotSpacePos.x, plotSpacePos.y, plotSpacePos.z);
+
+                        TCClient.COMMAND_MANAGER.queueCommand(command);
+                        ptpFuture = new CompletableFuture<>();
+                        try {
+                            teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Plot scan failed during size fetch due to not receiving a teleport response");
+                        }
+
+                        // if teleport target was out of bounds, the plot size has been found
+                        if (teleportResult.isEmpty()) {
+                            break;
+                        } else {
+                            currentSizeGuess = PlotType.values()[currentSizeGuess.ordinal() + 1];
                         }
                     }
-
-                    plotScanTargetPos.set(plotSpacePos.add(plotOriginGuess));
-                    String command = String.format("ptp %s %s %s", plotSpacePos.x, plotSpacePos.y, plotSpacePos.z);
-
-                    TCClient.COMMAND_MANAGER.queueCommand(command);
-                    ptpFuture = new CompletableFuture<>();
-                    try {
-                        teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Plot scan failed during size fetch due to not receiving a teleport response");
-                    }
-
-                    // if teleport target was out of bounds, the plot size has been found
-                    if (teleportResult.isEmpty()) {
-                        break;
-                    } else {
-                        currentSizeGuess = PlotType.values()[currentSizeGuess.ordinal() + 1];
-                    }
                 }
+
 
                 plotOrigin = plotOriginGuess;
                 plotType = currentSizeGuess;
@@ -576,10 +619,15 @@ implements
     }
 
     public void onTeleported(Vec3 newPos, Vec3 oldPos) {
+        String dimensionNamespace = TCClient.MCI.level.dimension().identifier().getNamespace();
         if (
-            ptpFuture != null && !ptpFuture.isDone() &&
-            (newPos.y == TP_MAGIC_Y_VALUE || newPos.y == TP_MAGIC_Y_VALUE_UNDERGROUND) &&
-            (plotScanTargetPos.get() == null || newPos.closerThan(plotScanTargetPos.get(),0.01))
+            ptpFuture != null && !ptpFuture.isDone()
+            && (
+                newPos.y == TP_MAGIC_Y_VALUE
+                || newPos.y == TP_MAGIC_Y_VALUE_UNDERGROUND
+                || (useWorldPlotScanRoutine && dimensionNamespace.equals("minecraft") && (newPos.y == 5 || newPos.y == 50))
+            )
+            && (plotScanTargetPos.get() == null || newPos.closerThan(plotScanTargetPos.get(),0.01))
         ) {
             ptpFuture.complete(Optional.of(newPos));
         }

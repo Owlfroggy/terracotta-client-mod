@@ -82,10 +82,20 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         }
     }
 
+    private String lastDimensionNamespace = "minecraft";
     public void onTeleported(Vec3 newPos, Vec3 oldPos) {
         if (currentMovementState != MovementState.NOT_MOVING) {
             assumedPlayerPos = newPos;
             currentMovementState = MovementState.AVOID_CODE;
+        }
+
+        // when changing dimensions, re-apply movement speed modifier
+        String dimensionNamespace = TCClient.MCI.level.dimension().identifier().getNamespace();
+        if (!dimensionNamespace.equals(lastDimensionNamespace)) {
+            if (movementSpeedIsModified) {
+                TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
+            }
+            lastDimensionNamespace = dimensionNamespace;
         }
     }
 
