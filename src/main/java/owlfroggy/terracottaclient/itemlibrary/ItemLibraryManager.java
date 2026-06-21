@@ -93,7 +93,12 @@ implements
         if (slot == -1)
             throw new NoSpaceException("Not enough inventory space to start editing item.");
 
-        ItemStack item = Utils.snbtToItem(itemData);
+        ItemStack item;
+        try {
+            item = Utils.snbtToItem(itemData);
+        } catch (Exception e) {
+            throw new InvalidNBTException(e.getMessage());
+        }
 
         lastEditId += 1+(int)(Math.random()*100);
         int editId = lastEditId;

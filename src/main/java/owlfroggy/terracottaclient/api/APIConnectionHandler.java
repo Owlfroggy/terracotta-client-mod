@@ -56,12 +56,14 @@ public class APIConnectionHandler {
     }
 
     protected void respond(Request request, Response response) {
+        if (request.hasBeenRespondedTo()) return;
+        request.markAsRespondedTo();
         response.setId(request.getId());
         String json = response.serialize();
         connection.send(json);
     }
 
-    /**
+    /**respond
      * @return Returns true if the permission check passed, false if the required permission is not present
      */
     protected boolean hasRequiredPermission(Permission requiredPermission) {
@@ -86,7 +88,7 @@ public class APIConnectionHandler {
             String tokenString = generateTokenString();
             permissions = r.getPermissions();
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
-            respond(r,new RequestTokenC2AResponse(tokenString));
+            respond (r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
             TCClient.safeMessage(Component.literal("authed "+appName).withColor(CommonColors.GREEN));
             sendInitialState();

@@ -8,11 +8,14 @@ import owlfroggy.terracottaclient.api.RequestMethod;
 public class Request extends Message {
     private RequestMethod method;
     private APIConnectionHandler handler;
+    private boolean respondedTo = false;
 
     public RequestMethod getMethod() { return method; }
     public APIConnectionHandler getHandler() { return handler; }
 
     public void setHandler(APIConnectionHandler handler) { this.handler = handler; }
+    public void markAsRespondedTo() { respondedTo = true; }
+    public boolean hasBeenRespondedTo() { return respondedTo; }
 
     public Request(RequestMethod method, Permission requiredPermission) {
         super(MessageType.REQUEST, requiredPermission);

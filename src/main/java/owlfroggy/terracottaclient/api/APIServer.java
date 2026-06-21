@@ -285,7 +285,13 @@ public class APIServer extends WebSocketServer {
         try {
             Message parsedMessage = parseMessage(message);
             if (parsedMessage instanceof Request request) {
-                handler.onRequest(request);
+                try {
+                    handler.onRequest(request);
+                } catch (APIException e) {
+                    handler.respond(request, new ErrorResponse(e.code, e.getMessage()));
+                } catch (Exception e) {
+                    handler.respond(request, new ErrorResponse(APIErrorCode.INTERNAL_ERROR, e.getMessage()));
+                }
             }
         } catch (Exception exception) {
             if (exception instanceof MessageParsingException e) {

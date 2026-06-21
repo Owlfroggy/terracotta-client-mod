@@ -2,6 +2,7 @@ package owlfroggy.terracottaclient.api;
 
 public enum APIErrorCode {
     GENERIC_ERROR,
+    INTERNAL_ERROR,
     MALFORMED_MESSAGE,
     NO_PERMISSION,
 
