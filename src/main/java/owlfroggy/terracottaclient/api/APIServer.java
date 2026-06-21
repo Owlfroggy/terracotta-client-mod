@@ -5,9 +5,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
@@ -220,11 +222,11 @@ public class APIServer extends WebSocketServer {
     /** this is the command handler for /tcallow and /tcdeny */
     public static int decideAppAuthentication(CommandContext<FabricClientCommandSource> commandContext, boolean allow) {
         if (TCClient.API_SERVER == null)
-            commandContext.getSource().sendError(Component.literal("Terracotta API has not started yet."));
+            MsgHelper.safeTCMessage(Component.literal("Terracotta API has not started yet.").withColor(TextColor.RED));
 
         int appId = IntegerArgumentType.getInteger(commandContext, "app_id");
         if (!TCClient.API_SERVER.connectedAppsById.containsKey(appId)) {
-            commandContext.getSource().sendError(Component.literal("No connected app has id '%s'".formatted(appId)));
+            MsgHelper.safeTCMessage(Component.literal("No connected app has id '%s'".formatted(appId)).withColor(TextColor.RED));
             return 0;
         }
         APIConnectionHandler app = TCClient.API_SERVER.connectedAppsById.get(appId);
@@ -232,25 +234,23 @@ public class APIServer extends WebSocketServer {
         if (!app.isPendingAuthentication()) {
             if (app.isAuthenticated()) {
                 if (allow) {
-                    commandContext.getSource().sendError(Component.literal("App has already been authenticated."));
+                    MsgHelper.safeTCMessage(Component.literal("App has already been authenticated.").withColor(TextColor.RED));
                     return 0;
                 } else {
                     //TODO: Make this actually work
-                    commandContext.getSource().sendError(Component.literal("App has already been authenticated. If you want to disconnect the app, click [here]."));
+                    MsgHelper.safeTCMessage(Component.literal("App has already been authenticated. If you want to disconnect the app, click [here].").withColor(TextColor.RED));
                     return 0;
                 }
             } else {
-                commandContext.getSource().sendError(Component.literal("App has already been denied authentication."));
+                MsgHelper.safeTCMessage(Component.literal("App has already been denied authentication.").withColor(TextColor.RED));
                 return 0;
             }
         }
 
         if (allow) {
             app.allowAuthentication();
-            commandContext.getSource().sendFeedback(Component.literal("Allowed %s".formatted(appId)));
         } else {
             app.denyAuthentication();
-            commandContext.getSource().sendFeedback(Component.literal("Denied %s".formatted(appId)));
         }
 
         return 1;

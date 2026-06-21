@@ -1,8 +1,11 @@
 package owlfroggy.terracottaclient.api;
 
+import ca.weblite.objc.annotations.Msg;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.*;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickAction;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.network.chat.Component;
 import net.minecraft.util.CommonColors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -14,6 +17,7 @@ import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
+import java.time.format.TextStyle;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -91,8 +95,15 @@ public class APIConnectionHandler {
             token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
             respond (r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
-            MsgHelper.safeMessage(Component.literal("authed "+appName).withColor(CommonColors.GREEN));
             sendInitialState();
+
+            MsgHelper.safeTCMessage(
+                Component.empty()
+                    .append(Component.literal("✔ ").withColor(MsgHelper.COLOR.LIGHT_GREEN).withStyle(ChatFormatting.BOLD))
+                    .append(Component.translatable("terracotta-client.permissions.allowedConfirmtaion",Component.literal(appName).withColor(MsgHelper.COLOR.TC_ORANGE)))
+                    .append(" ")
+                    .append(MsgHelper.getIndefiniteAccessWarning())
+            );
         }
     }
 
@@ -103,6 +114,27 @@ public class APIConnectionHandler {
         ));
         // TODO: send a different error message for invalid token
         authenticationRequest = null;
+
+        MsgHelper.safeTCMessage(
+            Component.empty()
+                .append(Component.literal("❌ ").withColor(MsgHelper.COLOR.LIGHT_RED).withStyle(ChatFormatting.BOLD))
+                .append(Component.translatable("terracotta-client.permissions.deniedConfirmtaion",Component.literal(appName).withColor(MsgHelper.COLOR.TC_ORANGE)))
+        );
+    }
+
+    private MutableComponent textifyPermissions(Set<Permission> permissions) {
+        MutableComponent msg = Component.empty();
+        boolean addNewlines = false;
+        // TODO: sort this
+        for (Permission p : Permission.values()) {
+            if (!permissions.contains(p)) continue;
+            if (addNewlines)
+                msg.append("\n");
+            addNewlines = true;
+            msg.append(Component.literal(" • ").withColor(TextColor.GRAY));
+            msg.append(Component.translatable("terracotta-client.permissions.ability."+p.name()).withColor(MsgHelper.COLOR.TC_BLUE));
+        }
+        return msg;
     }
 
     public void onRequest(Request request) {
@@ -130,19 +162,54 @@ public class APIConnectionHandler {
 
             authenticationRequest = r;
 
-            MsgHelper.safeTCMessage(Component.literal(
-                r.getAppName() + "is tryin  to connect w/ permissions: " + r.getPermissions().toString()
-                + "     & appid = " + getId()
-            ));
+            MsgHelper.safeMessage(Component.empty());
+            MsgHelper.safeMessage(textifyPermissions(r.getPermissions()));
+
+            MsgHelper.safeTCMessage(Component.empty()
+                .append(
+                    Component.translatable(
+                        "terracotta-client.permissions.newAppConnected",
+                        Component.literal(r.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                    )
+                )
+                .append("\n\n   ")
+                .append(
+                    Component.translatable("terracotta-client.permissions.clickable.accept")
+                        .withColor(MsgHelper.COLOR.LIGHT_GREEN)
+                        .withStyle(ChatFormatting.BOLD)
+                        .withStyle(Style.EMPTY.withClickEvent(
+                            new ClickEvent.RunCommand("tcallow "+getId())
+                        ))
+                )
+                .append("    ")
+                .append(
+                    Component.translatable("terracotta-client.permissions.clickable.deny")
+                    .withColor(MsgHelper.COLOR.LIGHT_RED)
+                    .withStyle(ChatFormatting.BOLD)
+                    .withStyle(Style.EMPTY.withClickEvent(
+                        new ClickEvent.RunCommand("tcdeny "+getId())
+                    ))
+                )
+                .append("\n")
+            );
         }
         else if (request instanceof ProvideTokenA2CRequest r) {
             APIToken token = TCClient.API_SERVER.getTokenObject(r.getToken());
             if (token == null) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
-                MsgHelper.safeTCMessage(Component.literal(
-                    "An app '%s' just connected to terracotta with the following permissions: %s".formatted(token.getAppName(),token.getPermissions())
-                ));
+                MsgHelper.safeMessage(Component.empty());
+                MsgHelper.safeMessage(textifyPermissions(token.getPermissions()));
+                MsgHelper.safeTCMessage(Component.empty()
+                    .append(
+                        Component.translatable(
+                            "terracotta-client.permissions.knownAppConnected",
+                            Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                        )
+                    )
+                    .append(". ")
+                    .append(MsgHelper.getIndefiniteAccessWarning())
+                );
                 this.token = token;
                 this.permissions = token.getPermissions();
                 respond(r, new ProvideTokenC2AResponse());

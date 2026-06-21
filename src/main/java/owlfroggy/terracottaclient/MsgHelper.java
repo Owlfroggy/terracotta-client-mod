@@ -2,17 +2,22 @@ package owlfroggy.terracottaclient;
 
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FontDescription;
-import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.*;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MsgHelper {
-    private static final Component ICON_COMP = Component.literal("T ")
+    public static class COLOR {
+        public static int TC_ORANGE = 0xf9a45b;
+        public static int TC_BLUE = 0x79c4f5;
+        public static int LIGHT_GREEN = 0x7FFF7F;
+        public static int LIGHT_RED = 0xFF5555;
+        public static int LIGHT_GOLD = 0xFFD47F;
+    }
+
+    private static final Component ICON_COMP = Component.literal(" T  ")
         .withStyle(style -> style
             .withFont(new FontDescription.Resource(Identifier.parse("terracotta-client:icons")))
             .withShadowColor(0x000000_00)
@@ -65,8 +70,27 @@ public class MsgHelper {
     }
 
 
+    public static MutableComponent getManagePermissionsButton() {
+        return Component.empty()
+            .append(
+                Component.translatable("terracotta-client.permissions.clickable.managePerms")
+                    .withColor(COLOR.LIGHT_GOLD)
+                    .withStyle(ChatFormatting.BOLD)
+                    .withStyle(Style.EMPTY.withClickEvent(new ClickEvent.RunCommand("placeholder")))
+            );
+    }
 
-    /* EVERYTHING BELOW HERE IS MESSAGE MATCHING STUFF */
+    /* MESSAGE BUILDER STUFF */
+    public static MutableComponent getIndefiniteAccessWarning() {
+        return Component.empty()
+            .append(Component.translatable("terracotta-client.permissions.indefiniteAccessWarning"))
+            .append("\n")
+            .append(getManagePermissionsButton());
+    }
+
+
+
+    /* MESSAGE MATCHING STUFF */
 
 
 

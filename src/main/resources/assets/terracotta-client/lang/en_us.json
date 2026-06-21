@@ -1,0 +1,20 @@
+{
+  "terracotta-client.permissions.newAppConnected": "%1$s would like permission to use the above abilities",
+  "terracotta-client.permissions.knownAppConnected": "%1$s has connected to Minecraft with the above abilities",
+  "terracotta-client.permissions.indefiniteAccessWarning": "It will retain access to these abilities §eindefinitely§r unless you revoke them.",
+  "terracotta-client.permissions.manageAppPermissions": "To manage app permissions, %1$s",
+  "terracotta-client.permissions.allowedConfirmtaion": "%1$s has been authenticated.",
+  "terracotta-client.permissions.deniedConfirmtaion": "%1$s has been denied authentication.",
+  "terracotta-client.permissions.clickable.accept": "[ Click here to accept ]",
+  "terracotta-client.permissions.clickable.deny": "[ Click here to deny ]",
+  "terracotta-client.permissions.clickable.managePerms": "[ Click here to manage app permissions ]",
+  "terracotta-client.permissions.clickable.generic": "[ Click here ]",
+  "terracotta-client.permissions.ability.EDIT_CODE": "Edit plot code",
+  "terracotta-client.permissions.ability.EDIT_LIBRARY_ITEMS": "Edit library items",
+  "terracotta-client.permissions.ability.GET_INVENTORY": "See items in your inventory",
+  "terracotta-client.permissions.ability.GIVE_ITEMS": "Send items to your inventory",
+  "terracotta-client.permissions.ability.GET_PLOT_INFO": "Know what plot you're on",
+  "terracotta-client.permissions.ability.GET_MODE_INFO": "Know what mode you're in",
+  "terracotta-client.permissions.ability.CHANGE_MODE": "Change what mode you're in"
+
+}

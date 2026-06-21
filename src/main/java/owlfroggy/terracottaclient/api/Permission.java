@@ -1,11 +1,12 @@
 package owlfroggy.terracottaclient.api;
 
+// The order of permissions here is the order they'll be displayed in auth prompts
 public enum Permission {
-    EDIT_CODE,
-    EDIT_LIBRARY_ITEMS,
-    GET_INVENTORY,
-    GIVE_ITEMS,
-    GET_PLOT_INFO,
-    GET_MODE_INFO,
     CHANGE_MODE,
+    GET_MODE_INFO,
+    GET_PLOT_INFO,
+    GIVE_ITEMS,
+    GET_INVENTORY,
+    EDIT_LIBRARY_ITEMS,
+    EDIT_CODE,
 }
