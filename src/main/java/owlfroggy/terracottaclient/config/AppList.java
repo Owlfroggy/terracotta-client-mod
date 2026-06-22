@@ -91,9 +91,10 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
         }
 
         public void init() {
-            removeButton = makeButton("trash","Permanently Remove", button -> {});
-            infoButton = makeButton("info","Info", button -> {});
+            // declared in this order since that controls tab navigation apparently
             disconnectButton = makeButton("disconnect","Disconnect", button -> {});
+            infoButton = makeButton("info","Info", button -> {});
+            removeButton = makeButton("trash","Permanently Remove", button -> {});
         }
 
         public String prettifySeconds(long seconds) {
