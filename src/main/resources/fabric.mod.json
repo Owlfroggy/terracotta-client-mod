@@ -17,7 +17,10 @@
 	"entrypoints": {
 		"client": [
           "owlfroggy.terracottaclient.TCClient"
-		]
+		],
+        "modmenu": [
+          "owlfroggy.terracottaclient.config.ModMenuIntegration"
+        ]
 	},
 	"mixins": [
 		"terracotta-client.mixins.json"

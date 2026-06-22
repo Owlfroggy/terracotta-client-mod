@@ -27,6 +27,11 @@ public class AppManagementScreen extends Screen {
     }
 
     @Override
+    public void onClose() {
+        TCClient.MCI.gui.setScreen(parent);
+    }
+
+    @Override
     protected void init() {
         AppList list = new AppList(this.minecraft, 300, this.height - 20 - 30 - 10, 200);
         list.setPosition(this.width/2-list.getWidth()/2, 20);
