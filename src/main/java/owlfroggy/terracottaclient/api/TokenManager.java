@@ -1,6 +1,8 @@
 package owlfroggy.terracottaclient.api;
 
 import com.google.gson.*;
+import net.minecraft.network.chat.Component;
+import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
 
 import java.io.IOException;
@@ -117,5 +119,24 @@ public class TokenManager {
     public static Collection<APIToken> getAllTokens() {
         requireLoaded();
         return tokens.values();
+    }
+
+    /** Also disconnects all apps that were actively using this token */
+    public static void removeToken(String tokenString) {
+        if (!tokens.containsKey(tokenString)) return;
+        APIToken token = tokens.remove(tokenString);
+
+        APIServer.getTokenConnections(tokenString).forEach(APIConnectionHandler::forceDisconnect);
+        writeTokensToFile();
+
+        MsgHelper.safeTCMessage(
+            Component.translatable(
+                "terracotta-client.permissions.appRemoved",
+                Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+            )
+        );
+    }
+    public static void removeToken(APIToken token) {
+        removeToken(token.getToken());
     }
 }

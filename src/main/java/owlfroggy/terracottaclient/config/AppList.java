@@ -6,11 +6,16 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
+import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
+import owlfroggy.terracottaclient.api.APIConnectionHandler;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.APIToken;
+import owlfroggy.terracottaclient.api.TokenManager;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -82,7 +87,7 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
                     TCClient.ident("button/"+spriteName),
                     TCClient.ident("button/"+spriteName+"_highlighted")
                 ),
-                button1 -> {},
+                onPress,
                 Component.literal(tooltip)
             );
             button.setTooltip(Tooltip.create(Component.literal(tooltip)));
@@ -92,9 +97,34 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
 
         public void init() {
             // declared in this order since that controls tab navigation apparently
-            disconnectButton = makeButton("disconnect","Disconnect", button -> {});
+            disconnectButton = makeButton("disconnect","Disconnect",
+                button -> APIServer.getTokenConnections(token).forEach(APIConnectionHandler::forceDisconnect)
+            );
             infoButton = makeButton("info","Info", button -> {});
-            removeButton = makeButton("trash","Permanently Remove", button -> {});
+            removeButton = makeButton("trash","Permanently Remove",
+                button -> {
+                    Screen old = TCClient.MCI.gui.screen();
+                    final Screen parent;
+                    if (old instanceof AppManagementScreen o) parent = o.parent;
+                    else { parent = null; }
+                    TCClient.MCI.gui.setScreen(new ConfirmScreen(
+                        confirmed -> {
+                            if (confirmed) TokenManager.removeToken(token);
+                            AppManagementScreen.show(parent);
+                        },
+                        Component.translatable(
+                            "terracotta-client.permissions.removeConfirmation.title",
+                            Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                        ),
+                        Component.translatable(
+                            "terracotta-client.permissions.removeConfirmation.description",
+                            Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                        ),
+                        Component.translatable("terracotta-client.permissions.removeConfirmation.button.remove").withColor(TextColor.RED),
+                        Component.translatable("terracotta-client.permissions.removeConfirmation.button.cancel")
+                    ));
+                }
+            );
         }
 
         public String prettifySeconds(long seconds) {
@@ -106,7 +136,7 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
 
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
-            int connectionCount = APIServer.getTokenConnectionCount(token);
+            int connectionCount = APIServer.getTokenConnections(token).size();
 
             removeButton.setPosition(this.getContentX() + this.getContentWidth() - removeButton.getWidth(), this.getContentY());
             removeButton.extractRenderState(graphics, mouseX, mouseY, a);

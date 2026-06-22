@@ -19,10 +19,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -82,14 +79,16 @@ public class APIServer extends WebSocketServer {
         return TCClient.API_SERVER.connectedAppsById.containsKey(appId);
     }
 
-    /** Returns the number of currently connected apps using this token */
-    public static int getTokenConnectionCount(String tokenString) {
-        if (TCClient.API_SERVER == null) return 0;
-        if (!TCClient.API_SERVER.connectedAppsByToken.containsKey(tokenString)) return 0;
-        return TCClient.API_SERVER.connectedAppsByToken.get(tokenString).size();
+    /** Returns the connection handlers of all connected apps currently using this token */
+    public static List<APIConnectionHandler> getTokenConnections(String tokenString) {
+        if (
+            TCClient.API_SERVER == null ||
+            !TCClient.API_SERVER.connectedAppsByToken.containsKey(tokenString)
+        ) return new ArrayList<>();
+        return TCClient.API_SERVER.connectedAppsByToken.get(tokenString).stream().toList();
     }
-    public static int getTokenConnectionCount(APIToken token) {
-        return getTokenConnectionCount(token.getToken());
+    public static List<APIConnectionHandler> getTokenConnections(APIToken token) {
+        return getTokenConnections(token.getToken());
     }
 
     public int getNewMessageId() {

@@ -4,16 +4,26 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.APIToken;
+import owlfroggy.terracottaclient.api.TokenManager;
 
 import java.util.Collection;
 
 public class AppManagementScreen extends Screen {
     private Collection<APIToken> tokens;
+    public final Screen parent;
 
-    public AppManagementScreen(Collection<APIToken> tokens) {
+    public AppManagementScreen(Collection<APIToken> tokens, Screen parent) {
         super(Component.literal("Terracotta Config Screen"));
         this.tokens = tokens;
+        this.parent = parent;
+    }
+
+    public static void show(Screen parent) {
+        TCClient.MCI.execute(() -> {
+            TCClient.MCI.gui.setScreen(new AppManagementScreen(TokenManager.getAllTokens(), parent));
+        });
     }
 
     @Override

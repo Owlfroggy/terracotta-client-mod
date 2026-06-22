@@ -146,9 +146,7 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("tcconfig")
             .executes(context -> {
-                MCI.execute(() -> {
-                    MCI.gui.setScreen(new AppManagementScreen(TokenManager.getAllTokens()));
-                });
+                AppManagementScreen.show(null);
                 return 1;
             }));
         });

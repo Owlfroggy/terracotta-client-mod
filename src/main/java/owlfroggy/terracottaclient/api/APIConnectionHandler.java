@@ -45,6 +45,10 @@ public class APIConnectionHandler {
         homeThread = Thread.currentThread();
     }
 
+    public void forceDisconnect() {
+        connection.close();
+    }
+
     public void setToken(@NonNull APIToken token) {
         this.token = token;
         List<APIConnectionHandler> connections = TCClient.API_SERVER.connectedAppsByToken.getOrDefault(token.getToken(), null);

@@ -5,10 +5,18 @@
   "terracotta-client.permissions.manageAppPermissions": "To manage app permissions, %1$s",
   "terracotta-client.permissions.allowedConfirmtaion": "%1$s has been authenticated.",
   "terracotta-client.permissions.deniedConfirmtaion": "%1$s has been denied authentication.",
+
+  "terracotta-client.permissions.appRemoved": "Removed all permissions from %1$s. It may re-request these permissions.",
+  "terracotta-client.permissions.removeConfirmation.title": "Removing App %1$s",
+  "terracotta-client.permissions.removeConfirmation.description": "Clicking 'Remove App' will permanently revoke all permissions previously granted to %1$s and disconnect it.\n\nIt will be able to re-request these permissions, but you will have to manually authorize it again before it can connect.",
+  "terracotta-client.permissions.removeConfirmation.button.remove": "Remove App",
+  "terracotta-client.permissions.removeConfirmation.button.cancel": "Cancel",
+
   "terracotta-client.permissions.clickable.accept": "[ Click here to accept ]",
   "terracotta-client.permissions.clickable.deny": "[ Click here to deny ]",
   "terracotta-client.permissions.clickable.managePerms": "[ Click here to manage app permissions ]",
   "terracotta-client.permissions.clickable.generic": "[ Click here ]",
+
   "terracotta-client.permissions.ability.EDIT_CODE": "Edit plot code",
   "terracotta-client.permissions.ability.EDIT_LIBRARY_ITEMS": "Edit library items",
   "terracotta-client.permissions.ability.GET_INVENTORY": "See items in your inventory",
