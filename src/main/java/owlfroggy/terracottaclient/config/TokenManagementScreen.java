@@ -10,11 +10,11 @@ import owlfroggy.terracottaclient.api.TokenManager;
 
 import java.util.Collection;
 
-public class AppManagementScreen extends Screen {
+public class TokenManagementScreen extends Screen {
     private Collection<APIToken> tokens;
     public final Screen parent;
 
-    public AppManagementScreen(Collection<APIToken> tokens, Screen parent) {
+    public TokenManagementScreen(Collection<APIToken> tokens, Screen parent) {
         super(Component.literal("Terracotta Config Screen"));
         this.tokens = tokens;
         this.parent = parent;
@@ -22,7 +22,7 @@ public class AppManagementScreen extends Screen {
 
     public static void show(Screen parent) {
         TCClient.MCI.execute(() -> {
-            TCClient.MCI.gui.setScreen(new AppManagementScreen(TokenManager.getAllTokens(), parent));
+            TCClient.MCI.gui.setScreen(new TokenManagementScreen(TokenManager.getAllTokens(), parent));
         });
     }
 
@@ -33,7 +33,7 @@ public class AppManagementScreen extends Screen {
 
     @Override
     protected void init() {
-        AppList list = new AppList(this.minecraft, 300, this.height - 20 - 30 - 10, 200);
+        TokenListWidget list = new TokenListWidget(this.minecraft, 300, this.height - 20 - 30 - 10, 200);
         list.setPosition(this.width/2-list.getWidth()/2, 20);
         list.populate(tokens);
         this.addRenderableWidget(list);

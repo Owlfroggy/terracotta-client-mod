@@ -29,11 +29,10 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import owlfroggy.terracottaclient.api.APIServer;
-import owlfroggy.terracottaclient.api.TokenManager;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
-import owlfroggy.terracottaclient.config.AppManagementScreen;
+import owlfroggy.terracottaclient.config.TokenManagementScreen;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
@@ -146,7 +145,7 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("tcconfig")
             .executes(context -> {
-                AppManagementScreen.show(null);
+                TokenManagementScreen.show(null);
                 return 1;
             }));
         });

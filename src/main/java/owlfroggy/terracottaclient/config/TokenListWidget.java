@@ -22,15 +22,15 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
-    public List<AppEntry> entries = new ArrayList<>();
+public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidget.TokenEntry> {
+    public List<TokenEntry> entries = new ArrayList<>();
 
-    public AppList(Minecraft minecraft, int width, int height, int y) {
+    public TokenListWidget(Minecraft minecraft, int width, int height, int y) {
         super(minecraft, width, height, y, 24);
     }
 
     private void addEntry(APIToken token) {
-        AppEntry entry = new AppEntry(token, this);
+        TokenEntry entry = new TokenEntry(token, this);
         super.addEntry(entry);
         entries.add(entry);
         entry.init();
@@ -77,9 +77,9 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
         }
     }
 
-    public static class AppEntry extends ContainerObjectSelectionList.Entry<AppEntry> {
+    public static class TokenEntry extends ContainerObjectSelectionList.Entry<TokenEntry> {
         private final APIToken token;
-        private final AppList appList;
+        private final TokenListWidget tokenListWidget;
 
         private Button removeButton = null;
         private Button infoButton = null;
@@ -87,17 +87,17 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
 
         private List<GuiEventListener> children = new ArrayList<>();
 
-        public AppEntry(APIToken token, AppList appList) {
+        public TokenEntry(APIToken token, TokenListWidget tokenListWidget) {
             this.token = token;
-            this.appList = appList;
+            this.tokenListWidget = tokenListWidget;
         }
 
         // tweak vanilla minecraft's god awful default margins
         @Override public int getContentY() { return super.getContentY()-2; }
         @Override public int getContentBottom() {return super.getContentBottom()-2; }
 
-        @Override public int getContentX() { return super.getContentX()-(appList.scrollable() ? 12 : 8); }
-        @Override public int getContentWidth() { return super.getContentWidth()+(appList.scrollable() ? 19 : 17); }
+        @Override public int getContentX() { return super.getContentX()-(tokenListWidget.scrollable() ? 12 : 8); }
+        @Override public int getContentWidth() { return super.getContentWidth()+(tokenListWidget.scrollable() ? 19 : 17); }
 
         private Button makeButton(String spriteName, String tooltip, Button.OnPress onPress) {
             Button button = new ImageButton(
@@ -125,12 +125,12 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
                 button -> {
                     Screen old = TCClient.MCI.gui.screen();
                     final Screen parent;
-                    if (old instanceof AppManagementScreen o) parent = o.parent;
+                    if (old instanceof TokenManagementScreen o) parent = o.parent;
                     else { parent = null; }
                     TCClient.MCI.gui.setScreen(new ConfirmScreen(
                         confirmed -> {
                             if (confirmed) TokenManager.removeToken(token);
-                            AppManagementScreen.show(parent);
+                            TokenManagementScreen.show(parent);
                         },
                         Component.translatable(
                             "terracotta-client.permissions.removeConfirmation.title",
