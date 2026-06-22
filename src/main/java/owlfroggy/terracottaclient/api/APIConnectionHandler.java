@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.CommonColors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
+import org.jspecify.annotations.Nullable;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
@@ -79,6 +80,7 @@ public class APIConnectionHandler {
     public int getId() {
         return id;
     }
+    public @Nullable APIToken getToken() { return token; }
 
     public boolean isAuthenticated() {
         return token != null;
@@ -210,6 +212,8 @@ public class APIConnectionHandler {
                     .append(". ")
                     .append(MsgHelper.getIndefiniteAccessWarning())
                 );
+                token.bumpLastUsedTimestamp();
+                TokenManager.writeTokensToFile();
                 this.token = token;
                 this.permissions = token.getPermissions();
                 respond(r, new ProvideTokenC2AResponse());

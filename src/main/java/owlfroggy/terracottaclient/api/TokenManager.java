@@ -34,6 +34,8 @@ public class TokenManager {
                             String tokenString = tokenObject.get("token").getAsString();
                             String appName = tokenObject.get("app_name").getAsString();
                             long createdOnTimestamp = tokenObject.get("created_on_timestamp").getAsLong();
+                            long expiresOnTimestamp = tokenObject.get("expires_on_timestamp").getAsLong();
+                            long lastUsedTimestamp = tokenObject.get("last_used_timestamp").getAsLong();
 
                             JsonArray permissionsJsonArray = tokenObject.get("permissions").getAsJsonArray();
                             HashSet<Permission> permissions = new HashSet<>();
@@ -43,12 +45,13 @@ public class TokenManager {
                             }
 
                             tokens.put(tokenString, new APIToken(
-                                tokenString,appName,permissions,createdOnTimestamp
+                                tokenString,appName,permissions,createdOnTimestamp,expiresOnTimestamp,lastUsedTimestamp
                             ));
                         }
                     } catch (Exception ignored) {} // if a token is invalid just throw it away
                 } // end of loading for loop
             } else {
+                TCClient.LOGGER.warn("No token file exists, will reset to create one");
                 resetTokenFile = true;
             }
         } catch (Exception e) {
@@ -68,24 +71,30 @@ public class TokenManager {
         isLoaded = true;
     }
 
-    private static void writeTokensToFile() {
+    private static boolean isWriting = false;
+    public static void writeTokensToFile() {
         requireLoaded();
+        if (isWriting) throw new RuntimeException("Attempted to write to token file while a write was already in progress");
         JsonArray root = new JsonArray();
         for (APIToken token : getAllTokens()) {
             JsonObject o = new JsonObject();
             o.addProperty("token",token.getToken());
             o.addProperty("app_name",token.getAppName());
             o.addProperty("created_on_timestamp",token.getCreatedOnTimestamp());
+            o.addProperty("expires_on_timestamp",token.getExpiresOnTimestamp());
+            o.addProperty("last_used_timestamp",token.getLastUsedTimestamp());
             o.add("permissions",
                 new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray()));
             root.add(o);
         }
         String serialized = root.toString();
+        isWriting = true;
         try {
             Files.writeString(TOKEN_FILE_PATH,serialized);
         } catch (IOException e) {
             TCClient.LOGGER.error("Could not write token file: {}\n{}",e.getMessage(),e.getStackTrace());
         }
+        isWriting = false;
     }
 
     /**
@@ -98,7 +107,8 @@ public class TokenManager {
     }
     public static APIToken registerNewToken(String tokenString, String appName, Set<Permission> permissions) {
         requireLoaded();
-        APIToken token = new APIToken(tokenString,appName,permissions,Instant.now().getEpochSecond());
+        long now = Instant.now().getEpochSecond();
+        APIToken token = new APIToken(tokenString,appName,permissions,now,now + 2592000,now);
         tokens.put(tokenString,token);
         writeTokensToFile();
         return token;

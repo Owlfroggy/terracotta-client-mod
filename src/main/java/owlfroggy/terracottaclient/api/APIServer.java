@@ -193,9 +193,16 @@ public class APIServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         TCClient.LOGGER.info("closed " + conn.getRemoteSocketAddress() + " with exit code " + code + " additional info: " + reason);
-        int appId = connectedAppsBySocket.get(conn).getId();
+        APIConnectionHandler app =connectedAppsBySocket.get(conn);
+
+        APIToken token = app.getToken();
+        if (token != null) token.bumpLastUsedTimestamp();
+        TokenManager.writeTokensToFile();
+
+        int appId = app.getId();
         connectedAppsById.remove(appId);
         connectedAppsBySocket.remove(conn);
+
     }
 
     @Override
