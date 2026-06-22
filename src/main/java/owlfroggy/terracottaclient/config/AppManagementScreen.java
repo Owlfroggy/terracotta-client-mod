@@ -1,28 +1,26 @@
 package owlfroggy.terracottaclient.config;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import owlfroggy.terracottaclient.TCClient;
+import owlfroggy.terracottaclient.api.APIToken;
 
-public class ConfigScreen extends Screen {
-    public ConfigScreen() {
+import java.util.Collection;
+
+public class AppManagementScreen extends Screen {
+    private Collection<APIToken> tokens;
+
+    public AppManagementScreen(Collection<APIToken> tokens) {
         super(Component.literal("Terracotta Config Screen"));
+        this.tokens = tokens;
     }
 
     @Override
     protected void init() {
-        ExampleList list = new ExampleList(this.minecraft, 300, this.height - 20 - 30 - 10, 200);
+        AppList list = new AppList(this.minecraft, 300, this.height - 20 - 30 - 10, 200);
         list.setPosition(this.width/2-list.getWidth()/2, 20);
-        list.addEntry("Terracotta [flintlock project]");
-        list.addEntry("Terracotta [fireui]");
-        list.addEntry("dingus☐");
-        list.addEntry("dingus TWO");
-        list.addEntry("dingus THREE");
-        for (int i = 0; i < 20; i++) list.addEntry(""+i);
+        list.populate(tokens);
         this.addRenderableWidget(list);
         this.addRenderableWidget(
             Button.builder(Component.literal("Done"), button -> {})

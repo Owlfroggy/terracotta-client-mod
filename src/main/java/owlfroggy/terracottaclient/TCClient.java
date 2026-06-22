@@ -12,7 +12,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.BlockState;
@@ -30,10 +29,11 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import owlfroggy.terracottaclient.api.APIServer;
+import owlfroggy.terracottaclient.api.TokenManager;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
-import owlfroggy.terracottaclient.config.ConfigScreen;
+import owlfroggy.terracottaclient.config.AppManagementScreen;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
@@ -147,7 +147,7 @@ public class TCClient implements ClientModInitializer {
             .literal("tcconfig")
             .executes(context -> {
                 MCI.execute(() -> {
-                    MCI.gui.setScreen(new ConfigScreen());
+                    MCI.gui.setScreen(new AppManagementScreen(TokenManager.getAllTokens()));
                 });
                 return 1;
             }));

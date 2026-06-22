@@ -7,32 +7,37 @@ import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import owlfroggy.terracottaclient.TCClient;
+import owlfroggy.terracottaclient.api.APIToken;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-public class ExampleList extends ContainerObjectSelectionList<ExampleList.Entry> {
+public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
+    public List<AppEntry> entries = new ArrayList<>();
 
-    public ExampleList(Minecraft minecraft, int width, int height, int y) {
+    public AppList(Minecraft minecraft, int width, int height, int y) {
         super(minecraft, width, height, y, 24);
     }
 
-    @Override
-    public int getRowWidth() {
-        return width-28;
-    }
-
-    public void addEntry(String text) {
-        Entry entry = new Entry(text);
+    private void addEntry(APIToken token) {
+        AppEntry entry = new AppEntry(token);
         super.addEntry(entry);
         entry.init();
     }
 
-    public static class Entry extends ContainerObjectSelectionList.Entry<Entry> {
+    public void populate(Collection<APIToken> tokens) {
+        for (APIToken t : tokens) addEntry(t);
+    }
 
-        private final String text;
+    // this has to be done to put the scroll bar in the right place
+    @Override public int getRowWidth() {
+        return width-28;
+    }
+
+    public static class AppEntry extends ContainerObjectSelectionList.Entry<AppEntry> {
+        private final APIToken token;
 
         private Button removeButton = null;
         private Button infoButton = null;
@@ -40,8 +45,8 @@ public class ExampleList extends ContainerObjectSelectionList<ExampleList.Entry>
 
         private List<GuiEventListener> children = new ArrayList<>();
 
-        public Entry(String text) {
-            this.text = text;
+        public AppEntry(APIToken token) {
+            this.token = token;
         }
 
         // tweak vanilla minecraft's god awful default margins
@@ -74,21 +79,7 @@ public class ExampleList extends ContainerObjectSelectionList<ExampleList.Entry>
         }
 
         @Override
-        public List<? extends NarratableEntry> narratables() {
-            return List.of();
-        }
-
-        @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
-//            graphics.item(new ItemStack(Items.EMERALD), 20, 20);
-//            graphics.text(
-//                Minecraft.getInstance().font,
-//                text+"AAAAAAAAAAAAAA",
-//                4,
-//                2,
-//                0xFFFFFFFF,
-//                false
-//            );
             removeButton.setPosition(this.getContentX() + this.getContentWidth() - removeButton.getWidth(), this.getContentY());
             removeButton.extractRenderState(graphics, mouseX, mouseY, a);
 
@@ -96,20 +87,21 @@ public class ExampleList extends ContainerObjectSelectionList<ExampleList.Entry>
             infoButton.extractRenderState(graphics, mouseX, mouseY, a);
 
             disconnectButton.setPosition(this.getContentX() + this.getContentWidth() - disconnectButton.getWidth() - 44, this.getContentY());
-            disconnectButton.visible = text.startsWith("dignus") || text.startsWith("Terracotta");
+            disconnectButton.visible = false; // TODO: make this actually work
             disconnectButton.extractRenderState(graphics, mouseX, mouseY, a);
 
+            graphics.text(TCClient.MCI.font,token.getAppName(), this.getContentX(), this.getContentY()+1, -1);
 
-            graphics.text(TCClient.MCI.font,text, this.getContentX(), this.getContentY()+1, -1);
-            Component c;
-            if (text.startsWith("dignus") || text.startsWith("Terracotta")) {
-                c = Component.literal("2 Connections").withStyle(ChatFormatting.GREEN);
-            } else if (text.equals("0")) {
-                c = Component.literal("Last used 15d ago, expires in 15d").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
-            } else {
-                c = Component.literal("Last used 2h ago, expires in 3d").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
-            }
+            Component c = Component.literal("holder of places");
+//            if (text.startsWith("dignus") || text.startsWith("Terracotta")) {
+//                c = Component.literal("2 Connections").withStyle(ChatFormatting.GREEN);
+//            } else if (text.equals("0")) {
+//                c = Component.literal("Last used 15d ago, expires in 15d").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
+//            } else {
+//                c = Component.literal("Last used 2h ago, expires in 3d").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
+//            }
             graphics.text(TCClient.MCI.font,c, this.getContentX(), this.getContentBottom()-7, -1);
+
             graphics.fill(
                 this.getContentX(), this.getContentBottom()+4,
                 this.getContentRight(), this.getContentBottom()+3,
@@ -124,8 +116,13 @@ public class ExampleList extends ContainerObjectSelectionList<ExampleList.Entry>
 
         @Override
         public List<? extends GuiEventListener> children() {
-            TCClient.LOGGER.info("chikdren");
             return children;
+        }
+
+        @Override
+        public List<? extends NarratableEntry> narratables() {
+            // TODO: fill this out
+            return List.of();
         }
     }
 }
