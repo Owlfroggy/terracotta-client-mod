@@ -33,7 +33,9 @@ public class AppManagementScreen extends Screen {
         list.populate(tokens);
         this.addRenderableWidget(list);
         this.addRenderableWidget(
-            Button.builder(Component.literal("Done"), button -> {})
+            Button.builder(Component.literal("Done"),
+                    button -> TCClient.MCI.gui.setScreen(parent)
+                )
                 .size(200, 20)
                 .pos(this.width/2 - 100, this.height - 30)
                 .build()
