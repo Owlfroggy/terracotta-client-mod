@@ -25,7 +25,7 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
     }
 
     private void addEntry(APIToken token) {
-        AppEntry entry = new AppEntry(token);
+        AppEntry entry = new AppEntry(token, this);
         super.addEntry(entry);
         entry.init();
     }
@@ -42,11 +42,19 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
 
     // this has to be done to put the scroll bar in the right place
     @Override public int getRowWidth() {
-        return width-28;
+        return width-(scrollable() ? 28 : 20);
+    }
+
+    @Override
+    protected void extractListItems(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        // if this isn't done here, switching between the scrollable and non-scrollable layout doesnt always happen when it should
+        this.refreshScrollAmount();
+        super.extractListItems(graphics, mouseX, mouseY, a);
     }
 
     public static class AppEntry extends ContainerObjectSelectionList.Entry<AppEntry> {
         private final APIToken token;
+        private final AppList appList;
 
         private Button removeButton = null;
         private Button infoButton = null;
@@ -54,16 +62,17 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
 
         private List<GuiEventListener> children = new ArrayList<>();
 
-        public AppEntry(APIToken token) {
+        public AppEntry(APIToken token, AppList appList) {
             this.token = token;
+            this.appList = appList;
         }
 
         // tweak vanilla minecraft's god awful default margins
         @Override public int getContentY() { return super.getContentY()-2; }
         @Override public int getContentBottom() {return super.getContentBottom()-2; }
 
-        @Override public int getContentX() { return super.getContentX()-12; }
-        @Override public int getContentWidth() { return super.getContentWidth()+19; }
+        @Override public int getContentX() { return super.getContentX()-(appList.scrollable() ? 12 : 8); }
+        @Override public int getContentWidth() { return super.getContentWidth()+(appList.scrollable() ? 19 : 17); }
 
         private Button makeButton(String spriteName, String tooltip, Button.OnPress onPress) {
             Button button = new ImageButton(
