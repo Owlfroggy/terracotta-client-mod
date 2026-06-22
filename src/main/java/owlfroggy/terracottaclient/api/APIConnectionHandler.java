@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.CommonColors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import owlfroggy.terracottaclient.DFState;
 import owlfroggy.terracottaclient.MsgHelper;
@@ -19,9 +20,7 @@ import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.time.format.TextStyle;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class APIConnectionHandler {
     private final char[] TOKEN_CHARACTERS = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9'};
@@ -44,6 +43,16 @@ public class APIConnectionHandler {
         this.connection = connection;
         this.handshake = handshake;
         homeThread = Thread.currentThread();
+    }
+
+    public void setToken(@NonNull APIToken token) {
+        this.token = token;
+        List<APIConnectionHandler> connections = TCClient.API_SERVER.connectedAppsByToken.getOrDefault(token.getToken(), null);
+        if (connections == null) {
+            connections = new ArrayList<>();
+            TCClient.API_SERVER.connectedAppsByToken.put(token.getToken(), connections);
+        }
+        connections.add(this);
     }
 
     private String generateTokenString() {
@@ -94,7 +103,7 @@ public class APIConnectionHandler {
         if (authenticationRequest instanceof RequestTokenA2CRequest r) {
             String tokenString = generateTokenString();
             permissions = r.getPermissions();
-            token = TokenManager.registerNewToken(tokenString, r.getAppName(), permissions);
+            setToken(TokenManager.registerNewToken(tokenString, r.getAppName(), permissions));
             respond (r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
             sendInitialState();
@@ -214,7 +223,7 @@ public class APIConnectionHandler {
                 );
                 token.bumpLastUsedTimestamp();
                 TokenManager.writeTokensToFile();
-                this.token = token;
+                setToken(token);
                 this.permissions = token.getPermissions();
                 respond(r, new ProvideTokenC2AResponse());
                 sendInitialState();

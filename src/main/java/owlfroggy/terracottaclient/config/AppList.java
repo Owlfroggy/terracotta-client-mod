@@ -7,9 +7,12 @@ import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import owlfroggy.terracottaclient.TCClient;
+import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.APIToken;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -28,7 +31,13 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
     }
 
     public void populate(Collection<APIToken> tokens) {
-        for (APIToken t : tokens) addEntry(t);
+        APIToken[] sorted = tokens
+            .stream()
+            .sorted((a, b) -> Math.toIntExact(b.getLastUsedTimestamp() - a.getLastUsedTimestamp()))
+            .toArray(APIToken[]::new);
+        for (APIToken t : sorted) {
+            addEntry(t);
+        }
     }
 
     // this has to be done to put the scroll bar in the right place
@@ -78,8 +87,17 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
             disconnectButton = makeButton("disconnect","Disconnect", button -> {});
         }
 
+        public String prettifySeconds(long seconds) {
+            if (seconds < 60) return seconds+"s";
+            if (seconds < 60*60) return (seconds/60)+"m";
+            if (seconds < 60*60*24) return (seconds/(60*60))+"hr";
+            return (seconds/(60*60*24))+"d";
+        }
+
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+            int connectionCount = APIServer.getTokenConnectionCount(token);
+
             removeButton.setPosition(this.getContentX() + this.getContentWidth() - removeButton.getWidth(), this.getContentY());
             removeButton.extractRenderState(graphics, mouseX, mouseY, a);
 
@@ -87,20 +105,31 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
             infoButton.extractRenderState(graphics, mouseX, mouseY, a);
 
             disconnectButton.setPosition(this.getContentX() + this.getContentWidth() - disconnectButton.getWidth() - 44, this.getContentY());
-            disconnectButton.visible = false; // TODO: make this actually work
+            disconnectButton.visible = connectionCount > 0; // TODO: make this actually work
+            disconnectButton.setTooltip(Tooltip.create(Component.literal(
+                connectionCount == 1 ? "Disconnect" : "Disconnect All"
+            )));
             disconnectButton.extractRenderState(graphics, mouseX, mouseY, a);
 
             graphics.text(TCClient.MCI.font,token.getAppName(), this.getContentX(), this.getContentY()+1, -1);
 
-            Component c = Component.literal("holder of places");
-//            if (text.startsWith("dignus") || text.startsWith("Terracotta")) {
-//                c = Component.literal("2 Connections").withStyle(ChatFormatting.GREEN);
-//            } else if (text.equals("0")) {
-//                c = Component.literal("Last used 15d ago, expires in 15d").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
-//            } else {
-//                c = Component.literal("Last used 2h ago, expires in 3d").withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
-//            }
-            graphics.text(TCClient.MCI.font,c, this.getContentX(), this.getContentBottom()-7, -1);
+            Component secondLineText;
+            if (connectionCount > 0) {
+                secondLineText = Component.literal(
+                    connectionCount == 1 ? "Actively connected" : connectionCount + " active connections"
+                ).withColor(TextColor.GREEN);
+            } else {
+                long now = Instant.now().getEpochSecond();
+                long lastUsedSecondsAgo = now - token.getLastUsedTimestamp();
+                long timeUntilExpire = token.getExpiresOnTimestamp() - now;
+                secondLineText = Component.literal(
+                    "Last used %s ago, expires %s".formatted(
+                        prettifySeconds(lastUsedSecondsAgo),
+                        timeUntilExpire < 0 ? "on game close" : "in "+prettifySeconds(timeUntilExpire)
+                    )
+                ).withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
+            }
+            graphics.text(TCClient.MCI.font,secondLineText, this.getContentX(), this.getContentBottom()-7, -1);
 
             graphics.fill(
                 this.getContentX(), this.getContentBottom()+4,

@@ -21,14 +21,16 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class APIServer extends WebSocketServer {
     private boolean serverIsOpen = false;
-    private final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
-    private final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
+    protected final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
+    protected final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
+    protected final HashMap<String, List<APIConnectionHandler>> connectedAppsByToken = new HashMap<>();
     private final Set<Request> pendingRequests = new HashSet();
     private static int latestAppId = (int)(Math.random()*9999999);
     private static int latestMessageId = 0;
@@ -78,6 +80,16 @@ public class APIServer extends WebSocketServer {
     public static boolean hasConnectedAppId(int appId) {
         if (TCClient.API_SERVER == null) return false;
         return TCClient.API_SERVER.connectedAppsById.containsKey(appId);
+    }
+
+    /** Returns the number of currently connected apps using this token */
+    public static int getTokenConnectionCount(String tokenString) {
+        if (TCClient.API_SERVER == null) return 0;
+        if (!TCClient.API_SERVER.connectedAppsByToken.containsKey(tokenString)) return 0;
+        return TCClient.API_SERVER.connectedAppsByToken.get(tokenString).size();
+    }
+    public static int getTokenConnectionCount(APIToken token) {
+        return getTokenConnectionCount(token.getToken());
     }
 
     public int getNewMessageId() {
@@ -193,16 +205,26 @@ public class APIServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         TCClient.LOGGER.info("closed " + conn.getRemoteSocketAddress() + " with exit code " + code + " additional info: " + reason);
-        APIConnectionHandler app =connectedAppsBySocket.get(conn);
+        APIConnectionHandler app = connectedAppsBySocket.get(conn);
 
         APIToken token = app.getToken();
-        if (token != null) token.bumpLastUsedTimestamp();
-        TokenManager.writeTokensToFile();
+        if (token != null) {
+            token.bumpLastUsedTimestamp();
+            try {
+                TokenManager.writeTokensToFile();
+            } catch (Exception e) {
+                TCClient.LOGGER.error("error while writing tokens on connection close", e);
+            }
+            connectedAppsByToken.get(token.getToken()).remove(app);
+            if (connectedAppsByToken.get(token.getToken()).isEmpty())
+                connectedAppsByToken.remove(token.getToken());
+        }
+
+
 
         int appId = app.getId();
         connectedAppsById.remove(appId);
         connectedAppsBySocket.remove(conn);
-
     }
 
     @Override
