@@ -26,12 +26,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class APIServer extends WebSocketServer {
-    private static final Path TOKEN_FILE_PATH = TCClient.getConfigPath().resolve("tokens.json");
-
     private boolean serverIsOpen = false;
     private final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
     private final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
-    private final HashMap<String, APIToken> tokens = new HashMap<>();
     private final Set<Request> pendingRequests = new HashSet();
     private static int latestAppId = (int)(Math.random()*9999999);
     private static int latestMessageId = 0;
@@ -42,50 +39,6 @@ public class APIServer extends WebSocketServer {
 
     public APIServer(InetSocketAddress address) {
         super(address);
-
-        // load tokens
-        boolean resetTokenFile = false;
-        try {
-            if (Files.exists(TOKEN_FILE_PATH)) {
-                String contents = Files.readString(TOKEN_FILE_PATH);
-                JsonArray tokenArray = JsonParser.parseString(contents).getAsJsonArray();
-                for (JsonElement tokenElement : tokenArray) {
-                    try {
-                        if (tokenElement instanceof JsonObject tokenObject) {
-                            String tokenString = tokenObject.get("token").getAsString();
-                            String appName = tokenObject.get("app_name").getAsString();
-                            long createdOnTimestamp = tokenObject.get("created_on_timestamp").getAsLong();
-
-                            JsonArray permissionsJsonArray = tokenObject.get("permissions").getAsJsonArray();
-                            HashSet<Permission> permissions = new HashSet<>();
-                            for (JsonElement permissionElement : permissionsJsonArray) {
-                                Permission p = Permission.valueOf(permissionElement.getAsString());
-                                permissions.add(p);
-                            }
-
-                            tokens.put(tokenString, new APIToken(
-                                tokenString,appName,permissions,createdOnTimestamp
-                            ));
-                        }
-                    } catch (Exception ignored) {} // if a token is invalid just throw it away
-                } // end of loading for loop
-            } else {
-                resetTokenFile = true;
-            }
-        } catch (Exception e) {
-            TCClient.LOGGER.error("Could not read token file: {}\n{}",e.getMessage(),e.getStackTrace());
-            resetTokenFile = true;
-        }
-
-        if (resetTokenFile) {
-            try {
-                if (Files.exists(TOKEN_FILE_PATH))
-                    Files.move(TOKEN_FILE_PATH,TCClient.getConfigPath().resolve("tokens_error_"+Instant.now().getEpochSecond()));
-                Files.writeString(TOKEN_FILE_PATH,"[]");
-            } catch (Exception e) {
-                TCClient.LOGGER.error("Could not reset token file: {}\n{}",e.getMessage(),e.getStackTrace());
-            }
-        }
     }
 
     /** If there is no active API server, this function does nothing */
@@ -127,25 +80,6 @@ public class APIServer extends WebSocketServer {
         return TCClient.API_SERVER.connectedAppsById.containsKey(appId);
     }
 
-    private void writeTokensToFile() {
-        JsonArray root = new JsonArray();
-        for (APIToken token : tokens.values()) {
-            JsonObject o = new JsonObject();
-            o.addProperty("token",token.getToken());
-            o.addProperty("app_name",token.getAppName());
-            o.addProperty("created_on_timestamp",token.getCreatedOnTimestamp());
-            o.add("permissions",
-            new Gson().toJsonTree(token.getPermissions().stream().map(Enum::name).toArray()));
-            root.add(o);
-        }
-        String serialized = root.toString();
-        try {
-            Files.writeString(TOKEN_FILE_PATH,serialized);
-        } catch (IOException e) {
-            TCClient.LOGGER.error("Could not write token file: {}\n{}",e.getMessage(),e.getStackTrace());
-        }
-    }
-
     public int getNewMessageId() {
         latestMessageId++;
         return latestMessageId;
@@ -154,20 +88,6 @@ public class APIServer extends WebSocketServer {
     public int getNewNotificationId() {
         latestNotificationId++;
         return latestNotificationId;
-    }
-
-    /**
-     * @return returns null if the token is invalid, returns an APIToken object otherwise
-     */
-    public APIToken getTokenObject(String tokenString) {
-        if (tokens.containsKey(tokenString)) return tokens.get(tokenString);
-        return null;
-    }
-    public APIToken registerNewToken(String tokenString, String appName, Set<Permission> permissions) {
-        APIToken token = new APIToken(tokenString,appName,permissions,Instant.now().getEpochSecond());
-        tokens.put(tokenString,token);
-        writeTokensToFile();
-        return token;
     }
 
     public void setRequestAsPending(Request request, APIConnectionHandler handler) {

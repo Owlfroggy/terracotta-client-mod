@@ -92,7 +92,7 @@ public class APIConnectionHandler {
         if (authenticationRequest instanceof RequestTokenA2CRequest r) {
             String tokenString = generateTokenString();
             permissions = r.getPermissions();
-            token = TCClient.API_SERVER.registerNewToken(tokenString, r.getAppName(), permissions);
+            token = TokenManager.registerNewToken(tokenString, r.getAppName(), permissions);
             respond (r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
             sendInitialState();
@@ -194,7 +194,7 @@ public class APIConnectionHandler {
             );
         }
         else if (request instanceof ProvideTokenA2CRequest r) {
-            APIToken token = TCClient.API_SERVER.getTokenObject(r.getToken());
+            APIToken token = TokenManager.getToken(r.getToken());
             if (token == null) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
