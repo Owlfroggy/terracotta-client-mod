@@ -7,6 +7,8 @@
   "terracotta-client.permissions.deniedConfirmtaion": "%1$s has been denied authentication.",
 
   "terracotta-client.permissions.appRemoved": "Removed all permissions from %1$s. It may re-request these permissions.",
+  "terracotta-client.permissions.noApps": "There's nothing here!",
+  "terracotta-client.permissions.noApps.hint": "Try refreshing the app's connection.",
   "terracotta-client.permissions.removeConfirmation.title": "Removing App %1$s",
   "terracotta-client.permissions.removeConfirmation.description": "Clicking 'Remove App' will permanently revoke all permissions previously granted to %1$s and disconnect it.\n\nIt will be able to re-request these permissions, but you will have to manually authorize it again before it can connect.",
   "terracotta-client.permissions.removeConfirmation.button.remove": "Remove App",

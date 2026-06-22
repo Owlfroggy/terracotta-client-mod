@@ -32,6 +32,7 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
     private void addEntry(APIToken token) {
         AppEntry entry = new AppEntry(token, this);
         super.addEntry(entry);
+        entries.add(entry);
         entry.init();
     }
 
@@ -55,6 +56,25 @@ public class AppList extends ContainerObjectSelectionList<AppList.AppEntry> {
         // if this isn't done here, switching between the scrollable and non-scrollable layout doesnt always happen when it should
         this.refreshScrollAmount();
         super.extractListItems(graphics, mouseX, mouseY, a);
+    }
+
+    @Override
+    protected void extractListBackground(GuiGraphicsExtractor graphics) {
+        super.extractListBackground(graphics);
+        if (entries.isEmpty()) {
+            graphics.centeredText(
+                TCClient.MCI.font,
+                Component.translatable("terracotta-client.permissions.noApps"),
+                getX() + getWidth()/2,getY() + getHeight()/2-5,
+                0xFFaaaaaa
+            );
+            graphics.centeredText(
+                TCClient.MCI.font,
+                Component.translatable("terracotta-client.permissions.noApps.hint"),
+                getX() + getWidth()/2,getY() + getHeight()/2+5,
+                0xFFaaaaaa
+            );
+        }
     }
 
     public static class AppEntry extends ContainerObjectSelectionList.Entry<AppEntry> {
