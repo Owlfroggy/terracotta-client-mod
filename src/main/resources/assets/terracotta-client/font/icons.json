@@ -2,7 +2,7 @@
   "providers": [
     {
       "type": "bitmap",
-      "file": "terracotta-client:ui/terracotta_mini.png",
+      "file": "terracotta-client:gui/sprites/terracotta_mini.png",
       "ascent": 8,
       "height": 8,
       "chars": [
@@ -11,7 +11,7 @@
     },
     {
       "type": "bitmap",
-      "file": "terracotta-client:ui/terracotta_full.png",
+      "file": "terracotta-client:gui/sprites/terracotta_full.png",
       "ascent": 8,
       "height": 9,
       "chars": [

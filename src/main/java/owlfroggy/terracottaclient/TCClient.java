@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +33,7 @@ import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
+import owlfroggy.terracottaclient.config.ConfigScreen;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
@@ -136,6 +138,17 @@ public class TCClient implements ClientModInitializer {
             .literal("terracotta_test")
             .executes(context -> {
                 MsgHelper.sendMessage(Component.literal(""+isOnDiamondFire()));
+                return 1;
+            }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommands
+            .literal("tcconfig")
+            .executes(context -> {
+                MCI.execute(() -> {
+                    MCI.gui.setScreen(new ConfigScreen());
+                });
                 return 1;
             }));
         });
@@ -389,6 +402,10 @@ public class TCClient implements ClientModInitializer {
     }
     public static boolean isChunkLoaded(Vec3 pos) {
         return isChunkLoaded(new Vec3i((int)pos.x,(int)pos.y,(int)pos.z));
+    }
+
+    public static Identifier ident(String path) {
+        return Identifier.fromNamespaceAndPath("terracotta-client",path);
     }
 
     public static Path getConfigPath() {
