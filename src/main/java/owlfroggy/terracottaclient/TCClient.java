@@ -335,7 +335,8 @@ public class TCClient implements ClientModInitializer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (API_SERVER != null && API_SERVER.isOpen() && TCClient.MCI.level == null) {
+            // stop api server if the api is either disabled or the player left the world
+            if (API_SERVER != null && API_SERVER.isOpen() && (TCClient.MCI.level == null || !Config.apiEnabled)) {
                 try {
                     API_SERVER.stop();
                 } catch (Exception ignored) {}
@@ -354,7 +355,7 @@ public class TCClient implements ClientModInitializer {
 
             // start API server
             ticksUntilTryAPIServer--;
-            if (TCClient.MCI.level != null && TCClient.MCI.player != null) {
+            if (Config.apiEnabled && TCClient.MCI.level != null && TCClient.MCI.player != null) {
                 if (API_SERVER == null && ticksUntilTryAPIServer <= 0) {
                     ticksUntilTryAPIServer = 100;
                     try {

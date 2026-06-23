@@ -30,6 +30,7 @@ import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.ItemChangedC2ANotification;
 import owlfroggy.terracottaclient.api.message.impl.ItemImageChangedC2ANotification;
 import owlfroggy.terracottaclient.api.message.impl.StopEditingItemC2ANotification;
+import owlfroggy.terracottaclient.config.Config;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 import owlfroggy.terracottaclient.gameinterface.TooltipRenderer;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
@@ -238,10 +239,10 @@ implements
         ItemStack item = slot.getItem();
         LibraryItemEditData libraryData = getLibraryData(item);
 
-        if (libraryData == null) return;
+        if (libraryData == null || !Config.highlightLibraryItems) return;
 
         context.blit(
-            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/ui/library_slot.png"),
+            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/gui/sprites/library_slot.png"),
             slot.x-2, slot.y-2,
             slot.x + 18, slot.y + 18,
             0, 1,
@@ -252,10 +253,10 @@ implements
     public void applyHotbarSlotDecoration(GuiGraphicsExtractor context, int x, int y, ItemStack item, CallbackInfo info) {
         LibraryItemEditData libraryData = getLibraryData(item);
 
-        if (libraryData == null) return;
+        if (libraryData == null || !Config.highlightLibraryItems) return;
 
         context.blit(
-        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/ui/library_hotbar_slot.png"),
+        Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/gui/sprites/library_hotbar_slot.png"),
             x-2, y-2,
             x + 18, y + 18,
             0, 1,
@@ -268,12 +269,12 @@ implements
         ItemStack item = TCClient.MCI.player.getInventory().getItem(selectedSlot);
         LibraryItemEditData libraryData = TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item);
 
-        if (libraryData == null) return;
+        if (libraryData == null || !Config.highlightLibraryItems) return;
 
         int x1 = context.guiWidth()/2 - 91 - 1 + selectedSlot * 20;
         int y1 = context.guiHeight() - 22 - 1;
         context.blit(
-            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/ui/library_hotbar_selection.png"),
+            Identifier.fromNamespaceAndPath(TCClient.MOD_ID,"textures/gui/sprites/library_hotbar_selection.png"),
             x1, y1,
             x1 + 24, y1 + 23,
             0, 1,
