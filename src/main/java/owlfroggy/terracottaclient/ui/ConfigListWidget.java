@@ -1,5 +1,6 @@
 package owlfroggy.terracottaclient.ui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -12,6 +13,7 @@ import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPosition
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
+import org.lwjgl.glfw.GLFW;
 import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.APIConnectionHandler;
@@ -45,7 +47,7 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
             if (type == boolean.class) {
                 this.addEntry(new BoolValueEntry(key, f, this));
             } else {
-                this.addEntry(new ValueEntry(key, f, this));
+                this.addEntry(new EnumValueEntry(key, f, this));
             }
         }
     }
@@ -140,7 +142,7 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
                         field.setBoolean(null, box.isChecked());
                         Config.write();
                     } catch (Exception e) {
-                        TCClient.LOGGER.error("Failed to set config value {} {}", e.getMessage(), e.getStackTrace());
+                        TCClient.LOGGER.error("Failed to set boolean config value {} {} {}", key, e.getMessage(), e.getStackTrace());
                     }
                 }
             );
@@ -153,6 +155,57 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
 
             checkbox.setPosition(getContentRight() - 20, getContentY());
             checkbox.extractContents(graphics, mouseX, mouseY, a);
+        }
+    }
+
+    public static class EnumValueEntry extends ValueEntry {
+        private Button button;
+
+
+        public EnumValueEntry(String key, Field field, ConfigListWidget tokenListWidget) {
+            super(key, field, tokenListWidget);
+        }
+
+        @Override
+        public void init() {
+            super.init();
+            boolean initValue = true;
+
+            button = Button.builder(Component.empty(),
+                (Button button) -> {
+                    try {
+                        Enum<?> existingValue = (Enum<?>)field.get(null);
+                        var enumConstants = existingValue.getDeclaringClass().getEnumConstants();
+                        boolean isShiftDown = InputConstants.isKeyDown(TCClient.MCI.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(TCClient.MCI.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
+                        int nextOrdinal = existingValue.ordinal() + (isShiftDown ? -1 : 1);
+                        if (nextOrdinal > enumConstants.length-1)
+                            nextOrdinal = 0;
+                        if (nextOrdinal < 0)
+                            nextOrdinal = enumConstants.length-1;
+                        field.set(null, enumConstants[nextOrdinal]);
+                        Config.write();
+                    } catch (Exception e) {
+                        TCClient.LOGGER.error("Failed to set enum config value {} {} {}", key, e.getMessage(), e.getStackTrace());
+                    }
+                }
+            ).size(100, 20).build();
+            children.add(button);
+        }
+
+        @Override
+        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+
+            super.extractContent(graphics, mouseX, mouseY, hovered, a);
+
+            Component msg = Component.literal("error :(").withColor(TextColor.RED);
+            try {
+                msg = Component.translatable("terracotta-client.config.value.%s.option.%s".formatted(key, ((Enum<?>)field.get(null)).name()));
+            } catch (Exception ignored) {}
+
+
+            button.setPosition(getContentRight() - button.getWidth(), getContentY());
+            button.setMessage(msg);
+            button.extractRenderState(graphics, mouseX, mouseY, a);
         }
     }
 }
