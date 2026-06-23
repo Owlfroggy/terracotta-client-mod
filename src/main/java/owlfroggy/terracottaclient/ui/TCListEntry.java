@@ -12,6 +12,8 @@ public class TCListEntry<E extends ContainerObjectSelectionList.Entry<E>> extend
     protected TCListWidget<?> listWidget;
     protected List<GuiEventListener> children = new ArrayList<>();
 
+    public boolean drawDivider = true;
+
     public TCListEntry(TCListWidget<?> listWidget) {
         this.listWidget = listWidget;
     }
@@ -37,16 +39,18 @@ public class TCListEntry<E extends ContainerObjectSelectionList.Entry<E>> extend
 
     @Override
     public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
-        graphics.fill(
-            this.getContentX(), this.getContentBottom()+4,
-            this.getContentRight(), this.getContentBottom()+3,
-            0x60FFFFFF
-        );
-        graphics.fill(
-            this.getContentX(), this.getContentBottom()+5,
-            this.getContentRight(), this.getContentBottom()+4,
-            0x60000000
-        );
+        if (drawDivider) {
+            graphics.fill(
+                this.getContentX(), this.getContentBottom()+4,
+                this.getContentRight(), this.getContentBottom()+3,
+                0x60FFFFFF
+            );
+            graphics.fill(
+                this.getContentX(), this.getContentBottom()+5,
+                this.getContentRight(), this.getContentBottom()+4,
+                0x60000000
+            );
+        }
     }
 
     public void init() {}

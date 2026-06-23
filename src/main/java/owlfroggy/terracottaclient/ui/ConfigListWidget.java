@@ -50,6 +50,12 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
                 this.addEntry(new EnumValueEntry(key, f, this));
             }
         }
+
+        this.addEntry(new ButtonEntry(
+            Component.translatable("terracotta-client.config.button.manageApps"),
+            button -> TokenManagementScreen.show(TCClient.MCI.gui.screen()),
+            this
+        ));
     }
 
     @Override
@@ -76,6 +82,35 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
             super(listWidget);
         }
     };
+
+    public static class ButtonEntry extends ConfigEntry {
+        private final Component comp;
+        private final Button.OnPress onPress;
+        private Button button;
+
+        public ButtonEntry(Component comp, Button.OnPress onPress, TCListWidget<?> listWidget) {
+            super(listWidget);
+            this.comp = comp;
+            this.onPress = onPress;
+            this.drawDivider = false;
+        }
+
+        public void init() {
+            super.init();
+            button = Button.builder(this.comp, onPress)
+                .size(150, 20)
+                .build();
+            children.add(button);
+        }
+
+        @Override
+        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+            super.extractContent(graphics, mouseX, mouseY, hovered, a);
+
+            button.setPosition(getContentX() + getContentWidth()/2 - button.getWidth()/2, getContentY());
+            button.extractRenderState(graphics, mouseX, mouseY, a);
+        }
+    }
 
     public static class ValueEntry extends ConfigEntry {
         protected String key;

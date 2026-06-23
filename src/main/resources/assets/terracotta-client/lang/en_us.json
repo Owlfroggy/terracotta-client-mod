@@ -48,6 +48,7 @@
   "terracotta-client.permissions.ability.CHANGE_MODE": "Change what mode you're in",
 
   "terracotta-client.config.title": "Terracotta Client Configuration",
+  "terracotta-client.config.button.manageApps": "Manage Applications",
   "terracotta-client.config.value.api_enabled.name": "Enable API",
   "terracotta-client.config.value.api_enabled.description": "Allow external applications to\nconnect to Terracotta Client\n\nTurning this off will disconnect all\ncurrently connected applications.",
   "terracotta-client.config.value.highlight_library_items.name": "Highlight Library Items",
