@@ -12,13 +12,13 @@ import java.util.Set;
 
 public class Config {
     // initialize here to set a default value
-    @ConfigValue(key = "api_enabled")
+    @ConfigValue(key = "api_enabled", order = 10)
     public static boolean apiEnabled = true;
 
-    @ConfigValue(key = "highlight_library_items")
+    @ConfigValue(key = "highlight_library_items", order = 20)
     public static boolean highlightLibraryItems = true;
 
-    @ConfigValue(key = "connection_message_type")
+    @ConfigValue(key = "connection_message_type", order = 30)
     public static ConnectionMessageMode connectionMessageMode = ConnectionMessageMode.VERBOSE;
 
 

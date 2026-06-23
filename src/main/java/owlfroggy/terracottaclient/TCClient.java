@@ -33,6 +33,7 @@ import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
 import owlfroggy.terracottaclient.config.Config;
+import owlfroggy.terracottaclient.ui.ConfigScreen;
 import owlfroggy.terracottaclient.ui.TokenManagementScreen;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
@@ -151,6 +152,15 @@ public class TCClient implements ClientModInitializer {
             .literal("tcapps")
             .executes(context -> {
                 TokenManagementScreen.show(null);
+                return 1;
+            }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommands
+            .literal("tcconfig")
+            .executes(context -> {
+                ConfigScreen.show(null);
                 return 1;
             }));
         });

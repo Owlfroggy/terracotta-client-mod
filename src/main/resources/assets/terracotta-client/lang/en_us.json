@@ -44,6 +44,13 @@
   "terracotta-client.permissions.ability.GIVE_ITEMS": "Send items to your inventory",
   "terracotta-client.permissions.ability.GET_PLOT_INFO": "Know what plot you're on",
   "terracotta-client.permissions.ability.GET_MODE_INFO": "Know what mode you're in",
-  "terracotta-client.permissions.ability.CHANGE_MODE": "Change what mode you're in"
+  "terracotta-client.permissions.ability.CHANGE_MODE": "Change what mode you're in",
 
+  "terracotta-client.config.title": "Terracotta Client Configuration",
+  "terracotta-client.config.value.api_enabled.name": "Enable API",
+  "terracotta-client.config.value.api_enabled.description": "Enable API",
+  "terracotta-client.config.value.highlight_library_items.name": "Highlight Library Items",
+  "terracotta-client.config.value.highlight_library_items.description": "Highlight Library Items",
+  "terracotta-client.config.value.connection_message_type.name": "App Connection Message Type",
+  "terracotta-client.config.value.connection_message_type.description": "App Connection Message Type"
 }

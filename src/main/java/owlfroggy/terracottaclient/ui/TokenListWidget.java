@@ -18,22 +18,11 @@ import owlfroggy.terracottaclient.api.APIToken;
 import owlfroggy.terracottaclient.api.TokenManager;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
-public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidget.TokenEntry> {
-    public List<TokenEntry> entries = new ArrayList<>();
-
+public class TokenListWidget extends TCListWidget<TokenListWidget.TokenEntry> {
     public TokenListWidget(Minecraft minecraft, int width, int height, int y) {
         super(minecraft, width, height, y, 24);
-    }
-
-    private void addEntry(APIToken token) {
-        TokenEntry entry = new TokenEntry(token, this);
-        super.addEntry(entry);
-        entries.add(entry);
-        entry.init();
     }
 
     public void populate(Collection<APIToken> tokens) {
@@ -42,20 +31,8 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
             .sorted((a, b) -> Math.toIntExact(b.getLastUsedTimestamp() - a.getLastUsedTimestamp()))
             .toArray(APIToken[]::new);
         for (APIToken t : sorted) {
-            addEntry(t);
+            addEntry(new TokenEntry(t, this));
         }
-    }
-
-    // this has to be done to put the scroll bar in the right place
-    @Override public int getRowWidth() {
-        return width-(scrollable() ? 28 : 20);
-    }
-
-    @Override
-    protected void extractListItems(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        // if this isn't done here, switching between the scrollable and non-scrollable layout doesnt always happen when it should
-        this.refreshScrollAmount();
-        super.extractListItems(graphics, mouseX, mouseY, a);
     }
 
     @Override
@@ -77,27 +54,17 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
         }
     }
 
-    public static class TokenEntry extends ContainerObjectSelectionList.Entry<TokenEntry> {
+    public static class TokenEntry extends TCListEntry<TokenEntry> {
         private final APIToken token;
-        private final TokenListWidget tokenListWidget;
 
         private Button removeButton = null;
         private Button infoButton = null;
         private Button disconnectButton = null;
 
-        private List<GuiEventListener> children = new ArrayList<>();
-
         public TokenEntry(APIToken token, TokenListWidget tokenListWidget) {
+            super(tokenListWidget);
             this.token = token;
-            this.tokenListWidget = tokenListWidget;
         }
-
-        // tweak vanilla minecraft's god awful default margins
-        @Override public int getContentY() { return super.getContentY()-2; }
-        @Override public int getContentBottom() {return super.getContentBottom()-2; }
-
-        @Override public int getContentX() { return super.getContentX()-(tokenListWidget.scrollable() ? 12 : 8); }
-        @Override public int getContentWidth() { return super.getContentWidth()+(tokenListWidget.scrollable() ? 19 : 17); }
 
         private Button makeButton(String spriteName, String tooltipKey, Button.OnPress onPress) {
             Button button = new ImageButton(
@@ -158,6 +125,8 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
 
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+            super.extractContent(graphics,mouseX,mouseY,hovered,a);
+
             int connectionCount = APIServer.getTokenConnections(token).size();
 
             removeButton.setPosition(this.getContentX() + this.getContentWidth() - removeButton.getWidth(), this.getContentY());
@@ -195,28 +164,6 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
                 ).withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
             }
             graphics.text(TCClient.MCI.font,secondLineText, this.getContentX(), this.getContentBottom()-7, -1);
-
-            graphics.fill(
-                this.getContentX(), this.getContentBottom()+4,
-                this.getContentRight(), this.getContentBottom()+3,
-                0x60FFFFFF
-            );
-            graphics.fill(
-                this.getContentX(), this.getContentBottom()+5,
-                this.getContentRight(), this.getContentBottom()+4,
-                0x60000000
-            );
-        }
-
-        @Override
-        public List<? extends GuiEventListener> children() {
-            return children;
-        }
-
-        @Override
-        public List<? extends NarratableEntry> narratables() {
-            // TODO: fill this out
-            return List.of();
         }
     }
 }

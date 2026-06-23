@@ -8,6 +8,6 @@ import owlfroggy.terracottaclient.api.TokenManager;
 public class ModMenuIntegration implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return parent -> new TokenManagementScreen(TokenManager.getAllTokens(), parent);
+        return ConfigScreen::new;
     }
 }
