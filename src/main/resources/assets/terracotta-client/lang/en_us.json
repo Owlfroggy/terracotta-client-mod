@@ -48,9 +48,9 @@
 
   "terracotta-client.config.title": "Terracotta Client Configuration",
   "terracotta-client.config.value.api_enabled.name": "Enable API",
-  "terracotta-client.config.value.api_enabled.description": "Enable API",
+  "terracotta-client.config.value.api_enabled.description": "Allow external applications to\nconnect to Terracotta Client",
   "terracotta-client.config.value.highlight_library_items.name": "Highlight Library Items",
-  "terracotta-client.config.value.highlight_library_items.description": "Highlight Library Items",
-  "terracotta-client.config.value.connection_message_type.name": "App Connection Message Type",
-  "terracotta-client.config.value.connection_message_type.description": "App Connection Message Type"
+  "terracotta-client.config.value.highlight_library_items.description": "Display a blue outline around\nLibrary Items to show they\nare being edited\n\n",
+  "terracotta-client.config.value.connection_message_type.name": "App Connection Message Mode",
+  "terracotta-client.config.value.connection_message_type.description": "The type of message (if any) to\nsend in chat when a known app\nconnects to Terracotta Client\n\n§eVerbose:§r Displays the connecting\napp's abilities in chat and provides\na button to manage its permissions\n\n§eMinimal:§r Just sends a notice that\nthe app connected in chat, includes\nno further information beyond the\napp's name\n\n§eNone:§r Does not send a notification\nwhen known apps connect"
 }

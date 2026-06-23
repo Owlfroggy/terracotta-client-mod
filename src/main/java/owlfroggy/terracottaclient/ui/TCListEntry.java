@@ -16,6 +16,18 @@ public class TCListEntry<E extends ContainerObjectSelectionList.Entry<E>> extend
         this.listWidget = listWidget;
     }
 
+    protected boolean isMouseOverChild(int mx, int my) {
+        for (GuiEventListener c : children) {
+            if (c.isMouseOver(mx, my)) return true;
+        }
+        return false;
+    }
+
+    /** Returns true if the mouse is over this element but not over any of its children */
+    protected boolean isMouseOverBg(int mx, int my) {
+        return isMouseOver(mx, my) && !isMouseOverChild(mx, my);
+    }
+
     // tweak vanilla minecraft's god awful default margins
     @Override public int getContentY() { return super.getContentY()-2; }
     @Override public int getContentBottom() {return super.getContentBottom()-2; }
