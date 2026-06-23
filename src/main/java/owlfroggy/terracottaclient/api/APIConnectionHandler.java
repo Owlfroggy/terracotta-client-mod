@@ -1,12 +1,9 @@
 package owlfroggy.terracottaclient.api;
 
-import ca.weblite.objc.annotations.Msg;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.*;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ClickAction;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.util.CommonColors;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.jspecify.annotations.NonNull;
@@ -19,7 +16,6 @@ import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
-import java.time.format.TextStyle;
 import java.util.*;
 
 public class APIConnectionHandler {
@@ -137,21 +133,6 @@ public class APIConnectionHandler {
         );
     }
 
-    private MutableComponent textifyPermissions(Set<Permission> permissions) {
-        MutableComponent msg = Component.empty();
-        boolean addNewlines = false;
-        // TODO: sort this
-        for (Permission p : Permission.values()) {
-            if (!permissions.contains(p)) continue;
-            if (addNewlines)
-                msg.append("\n");
-            addNewlines = true;
-            msg.append(Component.literal(" • ").withColor(TextColor.GRAY));
-            msg.append(Component.translatable("terracotta-client.permissions.ability."+p.name()).withColor(MsgHelper.COLOR.TC_BLUE));
-        }
-        return msg;
-    }
-
     public void onRequest(Request request) {
         if (!hasRequiredPermission(request.getRequiredPermission())) {
             respond(request, new ErrorResponse(APIErrorCode.NO_PERMISSION, "Required permission " + request.getRequiredPermission().name() + " is missing."));
@@ -178,7 +159,7 @@ public class APIConnectionHandler {
             authenticationRequest = r;
 
             MsgHelper.safeMessage(Component.empty());
-            MsgHelper.safeMessage(textifyPermissions(r.getPermissions()));
+            MsgHelper.safeMessage(MsgHelper.textifyPermissions(r.getPermissions()));
 
             MsgHelper.safeTCMessage(Component.empty()
                 .append(
@@ -214,7 +195,7 @@ public class APIConnectionHandler {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
                 MsgHelper.safeMessage(Component.empty());
-                MsgHelper.safeMessage(textifyPermissions(token.getPermissions()));
+                MsgHelper.safeMessage(MsgHelper.textifyPermissions(token.getPermissions()));
                 MsgHelper.safeTCMessage(Component.empty()
                     .append(
                         Component.translatable(

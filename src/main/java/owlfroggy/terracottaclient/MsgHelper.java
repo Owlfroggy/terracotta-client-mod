@@ -4,9 +4,11 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.*;
 import net.minecraft.resources.Identifier;
+import owlfroggy.terracottaclient.api.Permission;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class MsgHelper {
     public static class COLOR {
@@ -15,6 +17,7 @@ public class MsgHelper {
         public static int LIGHT_GREEN = 0x7FFF7F;
         public static int LIGHT_RED = 0xFF5555;
         public static int LIGHT_GOLD = 0xFFD47F;
+        public static int LIGHT_GRAY = 0xAAAAAA;
     }
 
     private static final Component ICON_COMP = Component.literal(" T  ")
@@ -89,6 +92,30 @@ public class MsgHelper {
     }
 
 
+    public static List<Component> textifyPermissionsSeparateComps(Set<Permission> permissions) {
+        List<Component> comps = new ArrayList<>();
+        for (Permission p : Permission.values()) {
+            if (!permissions.contains(p)) continue;
+            comps.add(
+                Component.translatable("terracotta-client.permissions.ability."+p.name()).withColor(COLOR.TC_BLUE)
+            );
+        }
+        return comps;
+    }
+
+    public static MutableComponent textifyPermissions(Set<Permission> permissions) {
+        MutableComponent msg = Component.empty();
+        boolean addNewlines = false;
+        for (Permission p : Permission.values()) {
+            if (!permissions.contains(p)) continue;
+            if (addNewlines)
+                msg.append("\n");
+            addNewlines = true;
+            msg.append(Component.literal(" • ").withColor(TextColor.GRAY));
+            msg.append(Component.translatable("terracotta-client.permissions.ability."+p.name()).withColor(COLOR.TC_BLUE));
+        }
+        return msg;
+    }
 
     /* MESSAGE MATCHING STUFF */
 

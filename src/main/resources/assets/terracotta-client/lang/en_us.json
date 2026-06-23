@@ -13,6 +13,11 @@
   "terracotta-client.permissions.removeConfirmation.description": "Clicking 'Remove App' will permanently revoke all permissions previously granted to %1$s and disconnect it.\n\nIt will be able to re-request these permissions, but you will have to manually authorize it again before it can connect.",
   "terracotta-client.permissions.removeConfirmation.button.remove": "Remove App",
   "terracotta-client.permissions.removeConfirmation.button.cancel": "Cancel",
+  "terracotta-client.permissions.info.title": "Information for %1$s",
+  "terracotta-client.permissions.info.firstCreated": "First connected on %1$s",
+  "terracotta-client.permissions.info.lastConnected": "Last connected on %1$s",
+  "terracotta-client.permissions.info.expires": "Expires on %1$s",
+  "terracotta-client.permissions.info.permissions": "Abilities:",
 
   "terracotta-client.permissions.clickable.accept": "[ Click here to accept ]",
   "terracotta-client.permissions.clickable.deny": "[ Click here to deny ]",

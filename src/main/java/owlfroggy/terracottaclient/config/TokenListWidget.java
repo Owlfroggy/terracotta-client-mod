@@ -120,7 +120,9 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
             disconnectButton = makeButton("disconnect","Disconnect",
                 button -> APIServer.getTokenConnections(token).forEach(APIConnectionHandler::forceDisconnect)
             );
-            infoButton = makeButton("info","Info", button -> {});
+            infoButton = makeButton("info","Info",
+                button -> TCClient.MCI.gui.setScreen(new TokenInformationScreen(token, TCClient.MCI.gui.screen()))
+            );
             removeButton = makeButton("trash","Permanently Remove",
                 button -> {
                     Screen old = TCClient.MCI.gui.screen();
