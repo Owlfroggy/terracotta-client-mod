@@ -14,6 +14,8 @@ import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.Utils;
 import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
+import owlfroggy.terracottaclient.config.Config;
+import owlfroggy.terracottaclient.config.ConnectionMessageMode;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
 import java.util.*;
@@ -194,18 +196,25 @@ public class APIConnectionHandler {
             if (token == null) {
                 respond(r, new ErrorResponse(APIErrorCode.INVALID_TOKEN, "Invalid token."));
             } else {
-                MsgHelper.safeMessage(Component.empty());
-                MsgHelper.safeMessage(MsgHelper.textifyPermissions(token.getPermissions()));
-                MsgHelper.safeTCMessage(Component.empty()
-                    .append(
-                        Component.translatable(
-                            "terracotta-client.permissions.knownAppConnected",
-                            Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                if (Config.connectionMessageMode == ConnectionMessageMode.VERBOSE) {
+                    MsgHelper.safeMessage(Component.empty());
+                    MsgHelper.safeMessage(MsgHelper.textifyPermissions(token.getPermissions()));
+                    MsgHelper.safeTCMessage(Component.empty()
+                        .append(
+                            Component.translatable(
+                                "terracotta-client.permissions.knownAppConnected.verbose",
+                                Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                            )
                         )
-                    )
-                    .append(". ")
-                    .append(MsgHelper.getIndefiniteAccessWarning())
-                );
+                        .append(". ")
+                        .append(MsgHelper.getIndefiniteAccessWarning())
+                    );
+                } else if (Config.connectionMessageMode == ConnectionMessageMode.MINIMAL) {
+                    MsgHelper.safeTCMessage(Component.translatable(
+                        "terracotta-client.permissions.knownAppConnected.minimal",
+                        Component.literal(token.getAppName()).withColor(MsgHelper.COLOR.TC_ORANGE)
+                    ));
+                }
                 token.bumpLastUsedTimestamp();
                 TokenManager.writeTokensToFile();
                 setToken(token);
