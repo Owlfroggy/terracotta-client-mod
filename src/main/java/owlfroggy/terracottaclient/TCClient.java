@@ -32,6 +32,7 @@ import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
+import owlfroggy.terracottaclient.config.Config;
 import owlfroggy.terracottaclient.ui.TokenManagementScreen;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
@@ -79,6 +80,8 @@ public class TCClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        Config.load();
+
         COMMAND_MANAGER = setupManager(new ChatCommandManager());
         DF_STATE = setupManager(new DFState());
         MOVEMENT_MANAGER = setupManager(new MovementManager());
@@ -136,7 +139,9 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("terracotta_test")
             .executes(context -> {
-                MsgHelper.sendMessage(Component.literal(""+isOnDiamondFire()));
+                Config.load();
+                TCClient.LOGGER.info("{} {} {}", Config.apiEnabled, Config.highlightLibraryItems, Config.connectionMessageMode);
+                Config.write();
                 return 1;
             }));
         });
