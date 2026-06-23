@@ -1,4 +1,4 @@
-package owlfroggy.terracottaclient.config;
+package owlfroggy.terracottaclient.ui;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;

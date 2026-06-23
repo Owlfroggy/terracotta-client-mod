@@ -32,7 +32,7 @@ import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.impl.ModeChangedC2ANotification;
 import owlfroggy.terracottaclient.codespace.TemplateIdentifier;
 import owlfroggy.terracottaclient.codespace.TemplateType;
-import owlfroggy.terracottaclient.config.TokenManagementScreen;
+import owlfroggy.terracottaclient.ui.TokenManagementScreen;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;

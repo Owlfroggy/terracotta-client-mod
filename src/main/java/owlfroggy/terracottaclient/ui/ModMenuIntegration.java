@@ -1,4 +1,4 @@
-package owlfroggy.terracottaclient.config;
+package owlfroggy.terracottaclient.ui;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;

@@ -1,21 +1,18 @@
-package owlfroggy.terracottaclient.config;
+package owlfroggy.terracottaclient.ui;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.world.entity.player.Abilities;
 import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.APIToken;
 import owlfroggy.terracottaclient.api.Permission;
-import owlfroggy.terracottaclient.api.TokenManager;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Collection;
 import java.util.Set;
 
 public class TokenInformationScreen extends Screen {

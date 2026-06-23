@@ -19,7 +19,7 @@
           "owlfroggy.terracottaclient.TCClient"
 		],
         "modmenu": [
-          "owlfroggy.terracottaclient.config.ModMenuIntegration"
+          "owlfroggy.terracottaclient.ui.ModMenuIntegration"
         ]
 	},
 	"mixins": [
