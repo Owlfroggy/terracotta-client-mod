@@ -79,7 +79,7 @@ public class MsgHelper {
                 Component.translatable("terracotta-client.permissions.clickable.managePerms")
                     .withColor(COLOR.LIGHT_GOLD)
                     .withStyle(ChatFormatting.BOLD)
-                    .withStyle(Style.EMPTY.withClickEvent(new ClickEvent.RunCommand("placeholder")))
+                    .withStyle(Style.EMPTY.withClickEvent(new ClickEvent.RunCommand("tcapps")))
             );
     }
 

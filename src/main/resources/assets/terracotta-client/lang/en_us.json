@@ -5,6 +5,10 @@
   "terracotta-client.permissions.manageAppPermissions": "To manage app permissions, %1$s",
   "terracotta-client.permissions.allowedConfirmtaion": "%1$s has been authenticated.",
   "terracotta-client.permissions.deniedConfirmtaion": "%1$s has been denied authentication.",
+  "terracotta-client.permissions.alreadyConnected": "App has already been authenticated.",
+  "terracotta-client.permissions.alreadyDenied": "App has already been denied authentication.",
+  "terracotta-client.permissions.apiNotStartedYet": "Terracotta API has not started yet.",
+  "terracotta-client.permissions.invalidApp": "No connected app has id %1$s.",
 
   "terracotta-client.permissions.appRemoved": "Removed all permissions from %1$s. It may re-request these permissions.",
   "terracotta-client.permissions.noApps": "There's nothing here!",

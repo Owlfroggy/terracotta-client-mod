@@ -143,7 +143,7 @@ public class TCClient implements ClientModInitializer {
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommands
-            .literal("tcconfig")
+            .literal("tcapps")
             .executes(context -> {
                 TokenManagementScreen.show(null);
                 return 1;

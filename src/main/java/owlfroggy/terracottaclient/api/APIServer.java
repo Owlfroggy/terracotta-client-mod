@@ -153,11 +153,11 @@ public class APIServer extends WebSocketServer {
     /** this is the command handler for /tcallow and /tcdeny */
     public static int decideAppAuthentication(CommandContext<FabricClientCommandSource> commandContext, boolean allow) {
         if (TCClient.API_SERVER == null)
-            MsgHelper.safeTCMessage(Component.literal("Terracotta API has not started yet.").withColor(TextColor.RED));
+            MsgHelper.safeTCMessage(Component.translatable("terracotta-client.permissions.apiNotStartedYet").withColor(TextColor.RED));
 
         int appId = IntegerArgumentType.getInteger(commandContext, "app_id");
         if (!TCClient.API_SERVER.connectedAppsById.containsKey(appId)) {
-            MsgHelper.safeTCMessage(Component.literal("No connected app has id '%s'".formatted(appId)).withColor(TextColor.RED));
+            MsgHelper.safeTCMessage(Component.translatable("terracotta-client.permissions.invalidApp",appId).withColor(TextColor.RED));
             return 0;
         }
         APIConnectionHandler app = TCClient.API_SERVER.connectedAppsById.get(appId);
@@ -165,15 +165,15 @@ public class APIServer extends WebSocketServer {
         if (!app.isPendingAuthentication()) {
             if (app.isAuthenticated()) {
                 if (allow) {
-                    MsgHelper.safeTCMessage(Component.literal("App has already been authenticated.").withColor(TextColor.RED));
+                    MsgHelper.safeTCMessage(Component.translatable("terracotta-client.permissions.alreadyConnected").withColor(TextColor.RED));
                     return 0;
                 } else {
-                    //TODO: Make this actually work
-                    MsgHelper.safeTCMessage(Component.literal("App has already been authenticated. If you want to disconnect the app, click [here].").withColor(TextColor.RED));
+                    MsgHelper.safeTCMessage(Component.translatable("terracotta-client.permissions.alreadyConnected").withColor(TextColor.RED));
+                    MsgHelper.safeMessage(MsgHelper.getManagePermissionsButton());
                     return 0;
                 }
             } else {
-                MsgHelper.safeTCMessage(Component.literal("App has already been denied authentication.").withColor(TextColor.RED));
+                MsgHelper.safeTCMessage(Component.translatable("terracotta-client.permissions.alreadyDenied").withColor(TextColor.RED));
                 return 0;
             }
         }
