@@ -42,19 +42,11 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
             Class<?> type = f.getType();
             String key = f.getAnnotation(ConfigValue.class).key();
 
-            this.addEntry(new ConfigEntry(key,this));
-
-//            this.addRenderableWidget(new ComponentWidget(
-//                Component.translatable("terracotta-client.config.value."+key),
-//                this.width/2-145, y
-//            ));
-//            if (type == boolean.class) {
-//                this.addRenderableWidget(
-//                    Checkbox.builder(Component.translatable("balls"),TCClient.MCI.font)
-//                        .pos(this.width/2+145,y)
-//                        .build()
-//                );
-//            }
+            if (type == boolean.class) {
+                this.addEntry(new BoolValueEntry(key, f, this));
+            } else {
+                this.addEntry(new ValueEntry(key, f, this));
+            }
         }
     }
 
@@ -77,29 +69,25 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
         }
     }
 
-    public static class ConfigEntry extends TCListEntry<ConfigListWidget.ConfigEntry> {
-        private String key;
-        private Button testButton;
+    public abstract static class ConfigEntry extends TCListEntry<ConfigListWidget.ConfigEntry> {
+        public ConfigEntry(TCListWidget<?> listWidget) {
+            super(listWidget);
+        }
+    };
 
-        public ConfigEntry(String key, ConfigListWidget tokenListWidget) {
+    public static class ValueEntry extends ConfigEntry {
+        protected String key;
+        protected Field field;
+
+        public ValueEntry(String key, Field field, ConfigListWidget tokenListWidget) {
             super(tokenListWidget);
             this.key = key;
-        }
-
-        @Override
-        public void init() {
-            super.init();
-            testButton = Button.builder(Component.literal("balls"),b -> {}).build();
-            children.add(testButton);
+            this.field = field;
         }
 
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
             super.extractContent(graphics,mouseX,mouseY,hovered,a);
-
-            testButton.setPosition(this.getContentRight()-50,this.getContentY());
-            testButton.setSize(50,20);
-            testButton.extractRenderState(graphics,mouseX,mouseY,a);
 
             Component configNameComp = Component.translatable("terracotta-client.config.value."+key+".name");
 
@@ -123,9 +111,48 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
             graphics.text(
                 TCClient.MCI.font,
                 configNameComp,
-                this.getContentX(), this.getContentY()+7,
+                this.getContentX(), this.getContentY()+6,
                 -1
             );
+        }
+    }
+
+    public static class BoolValueEntry extends ValueEntry {
+        private TCCheckbox checkbox;
+
+        public BoolValueEntry(String key, Field field, ConfigListWidget tokenListWidget) {
+            super(key, field, tokenListWidget);
+        }
+
+        @Override
+        public void init() {
+            super.init();
+            boolean initValue = true;
+            try {
+                initValue = field.getBoolean(null);
+            } catch (Exception ignored) {}
+
+            checkbox = new TCCheckbox(
+                0, 0,
+                initValue, true,
+                (box) -> {
+                    try {
+                        field.setBoolean(null, box.isChecked());
+                        Config.write();
+                    } catch (Exception e) {
+                        TCClient.LOGGER.error("Failed to set config value {} {}", e.getMessage(), e.getStackTrace());
+                    }
+                }
+            );
+            children.add(checkbox);
+        }
+
+        @Override
+        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+            super.extractContent(graphics, mouseX, mouseY, hovered, a);
+
+            checkbox.setPosition(getContentRight() - 20, getContentY());
+            checkbox.extractContents(graphics, mouseX, mouseY, a);
         }
     }
 }
