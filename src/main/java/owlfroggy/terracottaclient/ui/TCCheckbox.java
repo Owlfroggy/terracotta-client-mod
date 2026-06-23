@@ -51,7 +51,8 @@ public class TCCheckbox extends Button {
 
     @Override
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        Identifier sprite = getSprites(checked).get(this.isActive(), this.isHoveredOrFocused());
+        // isHovered is incorrectly cached when this runs so that has to be done out manually here
+        Identifier sprite = getSprites(checked).get(this.isActive(), (graphics.containsPointInScissor(mouseX, mouseY) && this.isMouseOver(mouseX,mouseY)) || this.isFocused());
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, this.getX(), this.getY(), this.width, this.height);
 
         if (showText) {
