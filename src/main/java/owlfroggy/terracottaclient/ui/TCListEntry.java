@@ -32,8 +32,8 @@ public class TCListEntry<E extends ContainerObjectSelectionList.Entry<E>> extend
     @Override public int getContentY() { return super.getContentY()-2; }
     @Override public int getContentBottom() {return super.getContentBottom()-2; }
 
-    @Override public int getContentX() { return super.getContentX()-(listWidget.scrollable() ? 12 : 8); }
-    @Override public int getContentWidth() { return super.getContentWidth()+(listWidget.scrollable() ? 19 : 17); }
+    @Override public int getX() { return super.getX()-(listWidget.scrollable() ? 12 : 8); }
+    @Override public int getWidth() { return super.getWidth()+(listWidget.scrollable() ? 19 : 17); }
 
     @Override
     public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
