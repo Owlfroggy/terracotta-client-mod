@@ -15,7 +15,7 @@ public class TokenManagementScreen extends Screen {
     public final Screen parent;
 
     public TokenManagementScreen(Collection<APIToken> tokens, Screen parent) {
-        super(Component.literal("Terracotta Config Screen"));
+        super(Component.literal("Terracotta App Management Screen"));
         this.tokens = tokens;
         this.parent = parent;
     }
@@ -38,7 +38,7 @@ public class TokenManagementScreen extends Screen {
         list.populate(tokens);
         this.addRenderableWidget(list);
         this.addRenderableWidget(
-            Button.builder(Component.literal("Done"),
+            Button.builder(Component.translatable("gui.done"),
                     button -> TCClient.MCI.gui.setScreen(parent)
                 )
                 .size(200, 20)
@@ -50,6 +50,6 @@ public class TokenManagementScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
         super.extractRenderState(graphics, mouseX, mouseY, delta);
-        graphics.centeredText(this.font, "Manage Terracotta Client Apps", this.width/2, 6, 0xFFFFFFFF);
+        graphics.centeredText(this.font, Component.translatable("terracotta-client.permissions.manageApps"), this.width/2, 6, 0xFFFFFFFF);
     }
 }

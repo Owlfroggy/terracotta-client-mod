@@ -23,7 +23,7 @@ public class TokenInformationScreen extends Screen {
     public final Screen parent;
 
     public TokenInformationScreen(APIToken token, Screen parent) {
-        super(Component.literal("Terracotta Config Screen"));
+        super(Component.literal("Application Information Screen"));
         this.token = token;
         this.parent = parent;
     }
@@ -36,7 +36,7 @@ public class TokenInformationScreen extends Screen {
     @Override
     protected void init() {
         this.addRenderableWidget(
-            Button.builder(Component.literal("Back"), button -> onClose())
+            Button.builder(Component.translatable("gui.back"), button -> onClose())
                 .size(200, 20)
                 .pos(this.width/2 - 100, this.height - 30)
                 .build()

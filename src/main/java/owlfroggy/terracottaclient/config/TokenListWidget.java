@@ -99,7 +99,7 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
         @Override public int getContentX() { return super.getContentX()-(tokenListWidget.scrollable() ? 12 : 8); }
         @Override public int getContentWidth() { return super.getContentWidth()+(tokenListWidget.scrollable() ? 19 : 17); }
 
-        private Button makeButton(String spriteName, String tooltip, Button.OnPress onPress) {
+        private Button makeButton(String spriteName, String tooltipKey, Button.OnPress onPress) {
             Button button = new ImageButton(
                 this.getContentX(), this.getContentY(),
                 20, 20,
@@ -108,22 +108,22 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
                     TCClient.ident("button/"+spriteName+"_highlighted")
                 ),
                 onPress,
-                Component.literal(tooltip)
+                Component.translatable(tooltipKey)
             );
-            button.setTooltip(Tooltip.create(Component.literal(tooltip)));
+            button.setTooltip(Tooltip.create(Component.translatable(tooltipKey)));
             children.add(button);
             return button;
         }
 
         public void init() {
             // declared in this order since that controls tab navigation apparently
-            disconnectButton = makeButton("disconnect","Disconnect",
+            disconnectButton = makeButton("disconnect","terracotta-client.permissions.button.disconnect",
                 button -> APIServer.getTokenConnections(token).forEach(APIConnectionHandler::forceDisconnect)
             );
-            infoButton = makeButton("info","Info",
+            infoButton = makeButton("info","terracotta-client.permissions.button.info",
                 button -> TCClient.MCI.gui.setScreen(new TokenInformationScreen(token, TCClient.MCI.gui.screen()))
             );
-            removeButton = makeButton("trash","Permanently Remove",
+            removeButton = makeButton("trash","terracotta-client.permissions.button.remove",
                 button -> {
                     Screen old = TCClient.MCI.gui.screen();
                     final Screen parent;
@@ -168,8 +168,8 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
 
             disconnectButton.setPosition(this.getContentX() + this.getContentWidth() - disconnectButton.getWidth() - 44, this.getContentY());
             disconnectButton.visible = connectionCount > 0; // TODO: make this actually work
-            disconnectButton.setTooltip(Tooltip.create(Component.literal(
-                connectionCount == 1 ? "Disconnect" : "Disconnect All"
+            disconnectButton.setTooltip(Tooltip.create(Component.translatable(
+                connectionCount == 1 ? "terracotta-client.permissions.button.disconnect" : "terracotta-client.permissions.button.disconnect.multi"
             )));
             disconnectButton.extractRenderState(graphics, mouseX, mouseY, a);
 
@@ -177,18 +177,21 @@ public class TokenListWidget extends ContainerObjectSelectionList<TokenListWidge
 
             Component secondLineText;
             if (connectionCount > 0) {
-                secondLineText = Component.literal(
-                    connectionCount == 1 ? "Actively connected" : connectionCount + " active connections"
+                secondLineText = (
+                    connectionCount == 1
+                        ? Component.translatable("terracotta-client.permissions.connection.active")
+                        : Component.translatable("terracotta-client.permissions.connection.active.multi", connectionCount)
                 ).withColor(TextColor.GREEN);
             } else {
                 long now = Instant.now().getEpochSecond();
                 long lastUsedSecondsAgo = now - token.getLastUsedTimestamp();
                 long timeUntilExpire = token.getExpiresOnTimestamp() - now;
-                secondLineText = Component.literal(
-                    "Last used %s ago, expires %s".formatted(
-                        prettifySeconds(lastUsedSecondsAgo),
-                        timeUntilExpire < 0 ? "on game close" : "in "+prettifySeconds(timeUntilExpire)
-                    )
+                secondLineText = Component.translatable(
+                    "terracotta-client.permissions.connection.inactive",
+                    prettifySeconds(lastUsedSecondsAgo),
+                    timeUntilExpire < 0
+                        ? Component.translatable("terracotta-client.permissions.connection.inactive.onClose")
+                        : Component.translatable("terracotta-client.permissions.connection.inactive.inTime",prettifySeconds(timeUntilExpire))
                 ).withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
             }
             graphics.text(TCClient.MCI.font,secondLineText, this.getContentX(), this.getContentBottom()-7, -1);
