@@ -94,18 +94,21 @@ public class MsgHelper {
     }
 
     public static String prettifySecondsLong(long seconds) {
-        if (seconds < 60) return seconds+" seconds";
-        if (seconds < 60*60) return (seconds/60)+" minutes";
-        if (seconds < 60*60*24) return (seconds/(60*60))+" hours";
-        return (seconds/(60*60*24))+" days";
+        if (seconds < 60) return seconds+" second(s)";
+        if (seconds < 60*60) return (seconds/60)+" minute(s)";
+        if (seconds < 60*60*24) return (seconds/(60*60))+" hour(s)";
+        return (seconds/(60*60*24))+" day(s)";
     }
 
     public static MutableComponent getIndefiniteAccessWarning(APIToken token) {
         return Component.empty()
             .append(Component.translatable(
                 "terracotta-client.permissions.indefiniteAccessWarning",
-                Component.literal(MsgHelper.prettifySecondsLong(token.getExpiresOnTimestamp() - Instant.now().getEpochSecond()))
-                    .withColor(TextColor.YELLOW)
+                Component.literal(
+                    token.getExpiresOnTimestamp() == -1
+                    ? "until the game closes"
+                    : "for " + MsgHelper.prettifySecondsLong(token.getExpiresOnTimestamp() - Instant.now().getEpochSecond())
+                ).withColor(TextColor.YELLOW)
             ))
             .append("\n")
             .append(getManagePermissionsButton());

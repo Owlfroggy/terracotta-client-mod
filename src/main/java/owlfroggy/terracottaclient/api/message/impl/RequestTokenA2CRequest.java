@@ -9,16 +9,26 @@ import owlfroggy.terracottaclient.api.message.Request;
 import java.util.HashSet;
 
 public class RequestTokenA2CRequest extends Request {
+    public enum Lifetime {
+        MONTH,
+        WEEK,
+        DAY,
+        SESSION,
+    }
+
     private String appName;
     private HashSet<Permission> permissions;
+    private Lifetime lifetime;
 
     public String getAppName() { return appName; }
     public HashSet<Permission> getPermissions() { return permissions; }
+    public Lifetime getLifetime() { return lifetime; }
 
-    public RequestTokenA2CRequest(String appName, HashSet<Permission> permissions) {
+    public RequestTokenA2CRequest(String appName, HashSet<Permission> permissions, Lifetime lifetime) {
         super(RequestMethod.REQUEST_TOKEN);
         this.appName = appName;
         this.permissions = permissions;
+        this.lifetime = lifetime;
     }
 
     public static RequestTokenA2CRequest parse(JsonObject message, JsonObject data) {
@@ -29,7 +39,15 @@ public class RequestTokenA2CRequest extends Request {
             catch (Exception e) { throw new RuntimeException("invalid_permission"); }
             permissions.add(p);
         }
-        return new RequestTokenA2CRequest(data.get("app_name").getAsString(), permissions);
+
+        Lifetime lifetime;
+        try {
+            lifetime = Enum.valueOf(Lifetime.class, data.get("lifetime").getAsString());
+        } catch (Exception e) {
+            lifetime = Lifetime.SESSION;
+        }
+
+        return new RequestTokenA2CRequest(data.get("app_name").getAsString(), permissions, lifetime);
     }
 
 }

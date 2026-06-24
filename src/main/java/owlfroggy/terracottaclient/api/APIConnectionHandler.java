@@ -106,7 +106,16 @@ public class APIConnectionHandler {
         if (authenticationRequest instanceof RequestTokenA2CRequest r) {
             String tokenString = generateTokenString();
             permissions = r.getPermissions();
-            setToken(TokenManager.registerNewToken(tokenString, r.getAppName(), permissions));
+
+            RequestTokenA2CRequest.Lifetime l = r.getLifetime();
+            long secondsUntilExpiration = (
+                l == RequestTokenA2CRequest.Lifetime.DAY ? 60*60*24
+                : l == RequestTokenA2CRequest.Lifetime.WEEK ? 60*60*24 * 7
+                : l == RequestTokenA2CRequest.Lifetime.MONTH ? 60*60*24 * 30
+                : -1
+            );
+
+            setToken(TokenManager.registerNewToken(tokenString, r.getAppName(), permissions, secondsUntilExpiration));
             respond (r,new RequestTokenC2AResponse(tokenString));
             authenticationRequest = null;
             sendInitialState();

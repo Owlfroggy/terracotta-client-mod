@@ -113,10 +113,21 @@ public class TokenManager {
         if (tokens.containsKey(tokenString)) return tokens.get(tokenString);
         return null;
     }
-    public static APIToken registerNewToken(String tokenString, String appName, Set<Permission> permissions) {
+
+    /**
+     * @param secondsUntilExpiration passing -1 will set the token's expirationTimestamp to -1
+     */
+    public static APIToken registerNewToken(String tokenString, String appName, Set<Permission> permissions, long secondsUntilExpiration) {
         requireLoaded();
         long now = Instant.now().getEpochSecond();
-        APIToken token = new APIToken(tokenString,appName,permissions,now,now + 2592000,now);
+        APIToken token = new APIToken(
+            tokenString,
+            appName,
+            permissions,
+            now,
+            secondsUntilExpiration == -1 ? -1 : now + secondsUntilExpiration,
+            now
+        );
         tokens.put(tokenString,token);
         writeTokensToFile();
         return token;

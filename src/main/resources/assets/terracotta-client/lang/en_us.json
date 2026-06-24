@@ -2,7 +2,7 @@
   "terracotta-client.permissions.newAppConnected": "%1$s would like permission to use the above abilities",
   "terracotta-client.permissions.knownAppConnected.verbose": "%1$s has connected to Minecraft with the above abilities",
   "terracotta-client.permissions.knownAppConnected.minimal": "%1$s has connected to Minecraft.",
-  "terracotta-client.permissions.indefiniteAccessWarning": "It will retain access to these abilities for §e%1$s§r unless you revoke them.",
+  "terracotta-client.permissions.indefiniteAccessWarning": "It will retain access to these abilities §e%1$s§r unless you revoke them.",
   "terracotta-client.permissions.manageAppPermissions": "To manage app permissions, %1$s",
   "terracotta-client.permissions.allowedConfirmtaion": "%1$s has been authenticated.",
   "terracotta-client.permissions.deniedConfirmtaion": "%1$s has been denied authentication.",
