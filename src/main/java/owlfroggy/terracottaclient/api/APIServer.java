@@ -125,6 +125,7 @@ public class APIServer extends WebSocketServer {
                 BiFunction<JsonObject, JsonObject, Request> parser = (switch (method) {
                     case "REQUEST_TOKEN" -> RequestTokenA2CRequest::parse;
                     case "PROVIDE_TOKEN" -> ProvideTokenA2CRequest::parse;
+                    case "DISPOSE_TOKEN" -> DisposeTokenA2CRequest::parse;
                     case "INITIATE_CODE_EDIT" -> InitiateCodeEditA2CRequest::parse;
                     case "CHANGE_MODE" -> ChangeModeA2CRequest::parse;
                     case "START_EDITING_ITEM" -> StartEditingItemA2CRequest::parse;

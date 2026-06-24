@@ -4,6 +4,7 @@ import com.google.gson.*;
 import net.minecraft.network.chat.Component;
 import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
+import owlfroggy.terracottaclient.ui.TokenManagementScreen;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -123,10 +124,15 @@ public class TokenManager {
 
     /** Also disconnects all apps that were actively using this token */
     public static void removeToken(String tokenString) {
+        APIServer.getTokenConnections(tokenString).forEach(APIConnectionHandler::forceDisconnect);
+
         if (!tokens.containsKey(tokenString)) return;
         APIToken token = tokens.remove(tokenString);
 
-        APIServer.getTokenConnections(tokenString).forEach(APIConnectionHandler::forceDisconnect);
+        if (TCClient.MCI.gui.screen() instanceof TokenManagementScreen s) {
+            TokenManagementScreen.show(s.parent);
+        }
+
         writeTokensToFile();
 
         MsgHelper.safeTCMessage(

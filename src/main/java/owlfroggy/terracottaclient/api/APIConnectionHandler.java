@@ -223,6 +223,17 @@ public class APIConnectionHandler {
                 sendInitialState();
             }
         }
+        else if (request instanceof DisposeTokenA2CRequest r) {
+            if (token == null) {
+                respond(r, new ErrorResponse(
+                    APIErrorCode.INVALID_TOKEN,
+                    "App does not have a connected token"
+                ));
+                return;
+            }
+            TokenManager.removeToken(token);
+            respond(r, new DisposeTokenA2CResponse());
+        }
         else if (request instanceof InitiateCodeEditA2CRequest r) {
             if (TCClient.CODE_EDIT_MANAGER.isEditingCode()) {
                 respond(r, new ErrorResponse(

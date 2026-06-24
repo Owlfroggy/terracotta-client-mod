@@ -125,6 +125,11 @@ public class TokenListWidget extends TCListWidget<TokenListWidget.TokenEntry> {
 
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+            if (TokenManager.getToken(token.getToken()) == null) {
+                listWidget.entries.remove(this);
+                return;
+            }
+            
             super.extractContent(graphics,mouseX,mouseY,hovered,a);
 
             int connectionCount = APIServer.getTokenConnections(token).size();
