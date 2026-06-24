@@ -4,8 +4,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.*;
 import net.minecraft.resources.Identifier;
+import owlfroggy.terracottaclient.api.APIToken;
 import owlfroggy.terracottaclient.api.Permission;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -84,9 +86,27 @@ public class MsgHelper {
     }
 
     /* MESSAGE BUILDER STUFF */
-    public static MutableComponent getIndefiniteAccessWarning() {
+    public static String prettifySeconds(long seconds) {
+        if (seconds < 60) return seconds+"s";
+        if (seconds < 60*60) return (seconds/60)+"m";
+        if (seconds < 60*60*24) return (seconds/(60*60))+"hr";
+        return (seconds/(60*60*24))+"d";
+    }
+
+    public static String prettifySecondsLong(long seconds) {
+        if (seconds < 60) return seconds+" seconds";
+        if (seconds < 60*60) return (seconds/60)+" minutes";
+        if (seconds < 60*60*24) return (seconds/(60*60))+" hours";
+        return (seconds/(60*60*24))+" days";
+    }
+
+    public static MutableComponent getIndefiniteAccessWarning(APIToken token) {
         return Component.empty()
-            .append(Component.translatable("terracotta-client.permissions.indefiniteAccessWarning"))
+            .append(Component.translatable(
+                "terracotta-client.permissions.indefiniteAccessWarning",
+                Component.literal(MsgHelper.prettifySecondsLong(token.getExpiresOnTimestamp() - Instant.now().getEpochSecond()))
+                    .withColor(TextColor.YELLOW)
+            ))
             .append("\n")
             .append(getManagePermissionsButton());
     }

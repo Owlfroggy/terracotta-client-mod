@@ -18,6 +18,7 @@ import owlfroggy.terracottaclient.config.Config;
 import owlfroggy.terracottaclient.config.ConnectionMessageMode;
 import owlfroggy.terracottaclient.itemrenderer.ItemRenderGenerator;
 
+import java.time.Instant;
 import java.util.*;
 
 public class APIConnectionHandler {
@@ -115,7 +116,7 @@ public class APIConnectionHandler {
                     .append(Component.literal("✔ ").withColor(MsgHelper.COLOR.LIGHT_GREEN).withStyle(ChatFormatting.BOLD))
                     .append(Component.translatable("terracotta-client.permissions.allowedConfirmtaion",Component.literal(appName).withColor(MsgHelper.COLOR.TC_ORANGE)))
                     .append(" ")
-                    .append(MsgHelper.getIndefiniteAccessWarning())
+                    .append(MsgHelper.getIndefiniteAccessWarning(token))
             );
         }
     }
@@ -207,7 +208,7 @@ public class APIConnectionHandler {
                             )
                         )
                         .append(". ")
-                        .append(MsgHelper.getIndefiniteAccessWarning())
+                        .append(MsgHelper.getIndefiniteAccessWarning(token))
                     );
                 } else if (Config.connectionMessageMode == ConnectionMessageMode.MINIMAL) {
                     MsgHelper.safeTCMessage(Component.translatable(

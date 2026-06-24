@@ -4,8 +4,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;
-import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -116,20 +114,13 @@ public class TokenListWidget extends TCListWidget<TokenListWidget.TokenEntry> {
             );
         }
 
-        public String prettifySeconds(long seconds) {
-            if (seconds < 60) return seconds+"s";
-            if (seconds < 60*60) return (seconds/60)+"m";
-            if (seconds < 60*60*24) return (seconds/(60*60))+"hr";
-            return (seconds/(60*60*24))+"d";
-        }
-
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
             if (TokenManager.getToken(token.getToken()) == null) {
                 listWidget.entries.remove(this);
                 return;
             }
-            
+
             super.extractContent(graphics,mouseX,mouseY,hovered,a);
 
             int connectionCount = APIServer.getTokenConnections(token).size();
@@ -162,10 +153,10 @@ public class TokenListWidget extends TCListWidget<TokenListWidget.TokenEntry> {
                 long timeUntilExpire = token.getExpiresOnTimestamp() - now;
                 secondLineText = Component.translatable(
                     "terracotta-client.permissions.connection.inactive",
-                    prettifySeconds(lastUsedSecondsAgo),
+                    MsgHelper.prettifySeconds(lastUsedSecondsAgo),
                     timeUntilExpire < 0
                         ? Component.translatable("terracotta-client.permissions.connection.inactive.onClose")
-                        : Component.translatable("terracotta-client.permissions.connection.inactive.inTime",prettifySeconds(timeUntilExpire))
+                        : Component.translatable("terracotta-client.permissions.connection.inactive.inTime", MsgHelper.prettifySeconds(timeUntilExpire))
                 ).withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY);
             }
             graphics.text(TCClient.MCI.font,secondLineText, this.getContentX(), this.getContentBottom()-7, -1);

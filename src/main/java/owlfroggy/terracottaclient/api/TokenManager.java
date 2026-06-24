@@ -40,6 +40,11 @@ public class TokenManager {
                             long expiresOnTimestamp = tokenObject.get("expires_on_timestamp").getAsLong();
                             long lastUsedTimestamp = tokenObject.get("last_used_timestamp").getAsLong();
 
+                            // token expiration
+                            if (expiresOnTimestamp < Instant.now().getEpochSecond()) {
+                                continue;
+                            }
+
                             JsonArray permissionsJsonArray = tokenObject.get("permissions").getAsJsonArray();
                             HashSet<Permission> permissions = new HashSet<>();
                             for (JsonElement permissionElement : permissionsJsonArray) {
