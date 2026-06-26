@@ -249,6 +249,17 @@ implements
                     break codeEditLogic;
                 }
 
+                // make sure the player is always trying to be in the right position
+                Vec3 goalPos = TCClient.MCI.player.position();
+                if (!TCClient.MOVEMENT_MANAGER.isMoving() && currentBatchCoreEdit != null) {
+                    goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3(0.5,2.2,0.5));
+
+                    TCClient.MOVEMENT_MANAGER.setMovementDestination(
+                        goalPos,
+                        "CODE_EDIT"
+                    );
+                }
+
                 //code editing
                 switch (editState) {
                     case MOVING -> {
@@ -280,21 +291,13 @@ implements
                             }
 
                             stagedEditActiveIndex = stagedCodeEdits.size()-1;
+
                         }
-
-                        // move to the right place
-                        if (!TCClient.MOVEMENT_MANAGER.isMoving()) {
-                            Vec3 goalPos = Utils.toVec3d(currentBatchCoreEdit.plotSpacePos).add(new Vec3(0.5,2.2,0.5));
-
-                            // if movement is complete, switch to editing mode
-                            if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.position()) < 1) {
-                                editState = GlobalEditState.EDITING;
-                            } else {
-                                TCClient.MOVEMENT_MANAGER.setMovementDestination(
-                                    goalPos,
-                                "CODE_EDIT"
-                                );
-                            }
+                        // the actual movement code is handled above the switch (editState) statement so that
+                        // getting moved out of alignment during editing doesn't make the placer get stuck
+                        // if movement is complete, switch to editing mode
+                        if (TCClient.DF_STATE.toWorldSpace(goalPos).distanceTo(TCClient.MCI.player.position()) < 1) {
+                            editState = GlobalEditState.EDITING;
                         }
                     }
 
@@ -302,7 +305,7 @@ implements
                         // if the player got moved away from the core edit, move them back
                         Vec3 playerPos = client.player.position();
                         Vec3 coreEditPos = Utils.toVec3d(TCClient.DF_STATE.toWorldSpace(currentBatchCoreEdit.plotSpacePos));
-                        if (!playerPos.closerThan(coreEditPos,4,4)) {
+                        if (!playerPos.closerThan(coreEditPos,4,4) || stagedCodeEdits.isEmpty()) {
                             editState = GlobalEditState.MOVING;
                             break codeEditLogic;
                         }
