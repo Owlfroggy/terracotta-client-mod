@@ -18,10 +18,14 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.Vec3i;
+import org.jetbrains.annotations.Nullable;
 import owlfroggy.terracottaclient.itemlibrary.InvalidNBTException;
 import owlfroggy.terracottaclient.itemlibrary.ItemLibraryManager;
 
+import javax.swing.text.html.Option;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 
 public class Utils {
     /**
@@ -100,6 +104,20 @@ public class Utils {
             return result.getOrThrow();
         } catch (Exception e) {
             throw new InvalidNBTException(e.getMessage());
+        }
+    }
+
+    @Nullable
+    public static String getItemDFValData(ItemStack item) {
+        try {
+            return (
+                item.get(DataComponents.CUSTOM_DATA)
+                    .copyTag()
+                    .getCompound("PublicBukkitValues").get()
+                    .getString("hypercube:varitem").get()
+            );
+        } catch (NoSuchElementException | NullPointerException e) {
+            return null;
         }
     }
 }

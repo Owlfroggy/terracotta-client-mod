@@ -1,9 +1,11 @@
 package owlfroggy.terracottaclient.api;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.*;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.jspecify.annotations.NonNull;
@@ -316,6 +318,8 @@ public class APIConnectionHandler {
                 ItemStack item = inv.getItem(slot);
                 if (item.isEmpty()) continue;
                 if (TCClient.ITEM_LIBRARY_MANAGER.getLibraryData(item) != null) continue;
+                if (r.shouldExcludeDFValues() && Utils.getItemDFValData(item) != null) continue;
+
                 itemEntries.put(slot, new GetInventoryC2AResponse.ItemEntry(
                     item.getHoverName().getString(),
                     Utils.itemToSnbt(item)
