@@ -327,6 +327,19 @@ public class APIConnectionHandler {
             }
             respond(r, new GetInventoryC2AResponse(itemEntries));
         }
+        else if (request instanceof GetCodeValuesA2CRequest r) {
+            Inventory inv = TCClient.MCI.player.getInventory();
+            HashMap<Integer, String> valueEntries = new HashMap<>();
+            for (int slot = 0; slot < inv.getContainerSize(); slot++) {
+                ItemStack item = inv.getItem(slot);
+                if (item.isEmpty()) continue;
+                String itemData = Utils.getItemDFValData(item);
+                if (itemData != null) {
+                    valueEntries.put(slot, itemData);
+                }
+            }
+            respond(r, new GetCodeValuesC2AResponse(valueEntries));
+        }
         else if (request instanceof RenderItemA2CRequest r) {
             ItemStack item = Utils.snbtToItem(r.getSnbt());
             try {
