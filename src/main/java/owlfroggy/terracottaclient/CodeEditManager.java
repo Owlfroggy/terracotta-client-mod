@@ -98,6 +98,7 @@ implements
     private int stagedEditActiveIndex = 0;
     private ItemStack oldOffhandItem;
     private ItemStack oldFirstSlotItem;
+    private int oldHeldSlot = 0;
 
     private ItemStack getReachExtender() {
         if (REACH_EXTENDER == null) {
@@ -119,6 +120,8 @@ implements
         if (oldOffhandItem != null) Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
         if (oldFirstSlotItem != null) Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
 
+        TCClient.MCI.player.getInventory().setSelectedSlot(oldHeldSlot);
+
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
         TCClient.MOVEMENT_MANAGER.stopMovement("CODE_EDIT");
         TCClient.MCI.player.inventoryMenu.broadcastChanges();
@@ -135,6 +138,8 @@ implements
 
         oldOffhandItem = TCClient.MCI.player.getInventory().getItem(Inventory.SLOT_OFFHAND);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getItem(TEMPLATE_VACUUM_SLOT);
+        oldHeldSlot = TCClient.MCI.player.getInventory().getSelectedSlot();
+
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(true);
 
         //TODO: make it be able to take positions from templates that are being deleted
@@ -279,6 +284,9 @@ implements
                         "CODE_EDIT"
                     );
                 }
+
+                // make sure the player is hovering over the first slot
+                TCClient.MCI.player.getInventory().setSelectedSlot(0);
 
                 //code editing
                 switch (editState) {
