@@ -32,6 +32,7 @@ import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
 import owlfroggy.terracottaclient.codespace.*;
 import owlfroggy.terracottaclient.gameinterface.ClientBlockUpdateReceiver;
 import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
+import owlfroggy.terracottaclient.gameinterface.ModeChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 import owlfroggy.terracottaclient.mixin.SequencedPacketAccessor;
 
@@ -41,7 +42,8 @@ public class CodeEditManager extends Manager
 implements
     ChunkReceiver,
     ClientBlockUpdateReceiver,
-    TickEndReceiver
+    TickEndReceiver,
+    ModeChangeReceiver
 {
     private class CodeEdit {
         public enum Action {
@@ -78,6 +80,12 @@ implements
         IDLE,
     }
 
+    public enum EndCause {
+        FINISHED_SUCCESSFULLY,
+        ABORTED,
+        LEFT_DEV_MODE,
+    }
+
     // TODO(UPDATE): fix reach extender
     private ItemStack REACH_EXTENDER = null; //Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
     private static final int TEMPLATE_VACUUM_SLOT = 0;
@@ -98,15 +106,33 @@ implements
         return this.REACH_EXTENDER;
     }
 
+    private void clearState() {
+        queuedCodeEdits.clear();
+        stagedCodeEdits.clear();
+        codeEditsByPlotPos.clear();
+        currentBatchCoreEdit = null;
+        stagedEditActiveIndex = 0;
+    }
+
+    public void stopEditing(EndCause cause) {
+        editState = GlobalEditState.IDLE;
+        if (oldOffhandItem != null) Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
+        if (oldFirstSlotItem != null) Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
+
+        TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
+        TCClient.MOVEMENT_MANAGER.stopMovement("CODE_EDIT");
+        TCClient.MCI.player.inventoryMenu.broadcastChanges();
+
+        clearState();
+    }
+
     public void editCode(String[] placeTemplates, TemplateIdentifier[] breakTemplates) throws Exception {
         if (!TCClient.DF_STATE.isScanned()) {
             throw new IllegalStateException("Plot has not been scanned");
         }
 
-        queuedCodeEdits.clear();
-        stagedCodeEdits.clear();
-        codeEditsByPlotPos.clear();
-        currentBatchCoreEdit = null;
+        clearState();
+
         oldOffhandItem = TCClient.MCI.player.getInventory().getItem(Inventory.SLOT_OFFHAND);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getItem(TEMPLATE_VACUUM_SLOT);
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(true);
@@ -231,13 +257,7 @@ implements
             codeEditLogic: if (editState != GlobalEditState.IDLE) {
                 // break out of editor mode if all edits have been completed
                 if (queuedCodeEdits.isEmpty() && stagedCodeEdits.isEmpty()) {
-                    Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
-                    Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
-
-                    TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
-
-                    client.player.inventoryMenu.broadcastChanges();
-                    editState = GlobalEditState.IDLE;
+                    stopEditing(EndCause.FINISHED_SUCCESSFULLY);
 
                     APIServer.resolvePendingRequests(r -> {
                        if (r instanceof InitiateCodeEditA2CRequest) {
@@ -475,5 +495,12 @@ implements
         if (plotOrigin == null) return;
 
         processCodeEditResponse(TCClient.DF_STATE.toPlotSpace(pos), state,true);
+    }
+
+    @Override
+    public void onModeChanged(DFState.Mode newMode) {
+        if (newMode != DFState.Mode.DEV) {
+            stopEditing(EndCause.LEFT_DEV_MODE);
+        }
     }
 }

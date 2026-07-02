@@ -149,6 +149,15 @@ public class TCClient implements ClientModInitializer {
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommands
+            .literal("tcstopediting")
+            .executes(context -> {
+                TCClient.CODE_EDIT_MANAGER.stopEditing(CodeEditManager.EndCause.ABORTED);
+                return 1;
+            }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommands
             .literal("tcapps")
             .executes(context -> {
                 TokenManagementScreen.show(null);
