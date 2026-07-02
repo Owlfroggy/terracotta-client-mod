@@ -370,9 +370,8 @@ public class APIConnectionHandler {
 
 
     public void sendNotification(String serializedNotification, Permission requiredPermission) {
-        TCClient.LOGGER.warn("{} {} [{}]", requiredPermission, hasRequiredPermission(requiredPermission), String.join(", ",permissions.stream().map(Enum::toString).toList()));
         if (!hasRequiredPermission(requiredPermission)) return;
-        TCClient.LOGGER.info("sending notif {}",serializedNotification);
+        if (APIServer.LOGS_ENABLED) TCClient.LOGGER.info("sending notif {}",serializedNotification);
         connection.send(serializedNotification);
     }
     public void sendNotification(Notification notification) {

@@ -24,6 +24,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class APIServer extends WebSocketServer {
+    public static final boolean LOGS_ENABLED = false;
+
     private boolean serverIsOpen = false;
     protected final HashMap<WebSocket, APIConnectionHandler> connectedAppsBySocket = new HashMap<>();
     protected final HashMap<java.lang.Integer, APIConnectionHandler> connectedAppsById = new HashMap<>();
@@ -205,7 +207,7 @@ public class APIServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        TCClient.LOGGER.info("closed " + conn.getRemoteSocketAddress() + " with exit code " + code + " additional info: " + reason);
+        if (LOGS_ENABLED) TCClient.LOGGER.info("closed " + conn.getRemoteSocketAddress() + " with exit code " + code + " additional info: " + reason);
         APIConnectionHandler app = connectedAppsBySocket.get(conn);
 
         APIToken token = app.getToken();
@@ -231,7 +233,7 @@ public class APIServer extends WebSocketServer {
     @Override
     public void onMessage(WebSocket conn, String message) {
         APIConnectionHandler handler = connectedAppsBySocket.get(conn);
-        TCClient.LOGGER.info("received message from "	+ conn.getRemoteSocketAddress() + ": " + message);
+        if (LOGS_ENABLED) TCClient.LOGGER.info("received message from "	+ conn.getRemoteSocketAddress() + ": " + message);
         try {
             Message parsedMessage = parseMessage(message);
             if (parsedMessage instanceof Request request) {
