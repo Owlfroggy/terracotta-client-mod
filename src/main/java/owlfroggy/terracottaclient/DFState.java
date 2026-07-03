@@ -537,7 +537,7 @@ implements
         });
     }
 
-    private void failScan(String errorMessage) {
+    public void failScan(String errorMessage) {
         setScanState(ScanState.NOT_SCANNED);
         queuedChunkRescans.clear();
         APIServer.resolvePendingRequests(request -> {

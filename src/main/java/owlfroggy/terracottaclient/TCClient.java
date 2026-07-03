@@ -151,7 +151,17 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("tcstopediting")
             .executes(context -> {
+                if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
                 TCClient.CODE_EDIT_MANAGER.stopEditing(CodeEditManager.EndCause.ABORTED);
+                return 1;
+            }));
+        });
+
+        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            dispatcher.register(ClientCommands
+            .literal("tcstopscanning")
+            .executes(context -> {
+                if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
                 return 1;
             }));
         });
