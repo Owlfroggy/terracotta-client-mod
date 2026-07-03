@@ -26,7 +26,10 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import owlfroggy.terracottaclient.api.APIErrorCode;
 import owlfroggy.terracottaclient.api.APIServer;
+import owlfroggy.terracottaclient.api.message.ErrorResponse;
+import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
 import owlfroggy.terracottaclient.codespace.*;
@@ -127,6 +130,30 @@ implements
         TCClient.MCI.player.inventoryMenu.broadcastChanges();
 
         clearState();
+
+        Response response;
+        if (cause == EndCause.FINISHED_SUCCESSFULLY) {
+            response = new InitiateCodeEditC2AResponse();
+        } else if (cause == EndCause.LEFT_DEV_MODE) {
+            response = new ErrorResponse(
+                APIErrorCode.EDIT_FAILED_LEFT_DEV,
+                "Player left dev mode before editing could complete."
+            );
+        } else if (cause == EndCause.ABORTED) {
+            response = new ErrorResponse(
+                APIErrorCode.EDIT_FAILED_ABORTED,
+                "Code edit operation was aborted before it could complete"
+            );
+        } else {
+            response = new ErrorResponse(APIErrorCode.EDIT_FAILED, "Code edit could not be completed");
+        }
+        APIServer.resolvePendingRequests(r -> {
+            if (r instanceof InitiateCodeEditA2CRequest) {
+                return response;
+            }
+            return null;
+        });
+
     }
 
     public void editCode(String[] placeTemplates, TemplateIdentifier[] breakTemplates) throws Exception {
@@ -263,13 +290,6 @@ implements
                 // break out of editor mode if all edits have been completed
                 if (queuedCodeEdits.isEmpty() && stagedCodeEdits.isEmpty()) {
                     stopEditing(EndCause.FINISHED_SUCCESSFULLY);
-
-                    APIServer.resolvePendingRequests(r -> {
-                       if (r instanceof InitiateCodeEditA2CRequest) {
-                           return new InitiateCodeEditC2AResponse();
-                       }
-                       return null;
-                    });
 
                     break codeEditLogic;
                 }
