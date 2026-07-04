@@ -129,6 +129,7 @@ public class APIServer extends WebSocketServer {
                     case "PROVIDE_TOKEN" -> ProvideTokenA2CRequest::parse;
                     case "DISPOSE_TOKEN" -> DisposeTokenA2CRequest::parse;
                     case "INITIATE_CODE_EDIT" -> InitiateCodeEditA2CRequest::parse;
+                    case "ABORT_CODE_EDIT" -> AbortCodeEditA2CRequest::parse;
                     case "CHANGE_MODE" -> ChangeModeA2CRequest::parse;
                     case "START_EDITING_ITEM" -> StartEditingItemA2CRequest::parse;
                     case "STOP_EDITING_ITEM" -> StopEditingItemA2CRequest::parse;

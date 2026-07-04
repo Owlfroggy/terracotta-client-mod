@@ -151,8 +151,10 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("tcstopediting")
             .executes(context -> {
-                if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
-                TCClient.CODE_EDIT_MANAGER.stopEditing(CodeEditManager.EndCause.ABORTED);
+                TCClient.MCI.execute(() -> {
+                    if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
+                    TCClient.CODE_EDIT_MANAGER.stopEditing(CodeEditManager.EndCause.ABORTED);
+                });
                 return 1;
             }));
         });
@@ -161,7 +163,9 @@ public class TCClient implements ClientModInitializer {
             dispatcher.register(ClientCommands
             .literal("tcstopscanning")
             .executes(context -> {
-                if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
+                TCClient.MCI.execute(() -> {
+                    if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
+                });
                 return 1;
             }));
         });
@@ -254,7 +258,7 @@ public class TCClient implements ClientModInitializer {
             .literal("rescanplot")
             .requires(source -> isOnDiamondFire())
             .executes(context -> {
-                DF_STATE.scanPlot();
+                TCClient.MCI.execute(() -> DF_STATE.scanPlot());
                 return 1;
             }));
         });

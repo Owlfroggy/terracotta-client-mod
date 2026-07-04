@@ -10,10 +10,7 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import owlfroggy.terracottaclient.DFState;
-import owlfroggy.terracottaclient.MsgHelper;
-import owlfroggy.terracottaclient.TCClient;
-import owlfroggy.terracottaclient.Utils;
+import owlfroggy.terracottaclient.*;
 import owlfroggy.terracottaclient.api.message.*;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.config.Config;
@@ -273,6 +270,18 @@ public class APIConnectionHandler {
                 return;
             }
         }
+        else if (request instanceof AbortCodeEditA2CRequest r) {
+            if (!(TCClient.DF_STATE.isScanning() || TCClient.CODE_EDIT_MANAGER.isEditingCode())) {
+                respond(r, new ErrorResponse(APIErrorCode.NO_ACTIVE_EDIT, "No active code edit operation to abort"));
+            } else {
+                TCClient.LOGGER.info("aborting :D");
+                TCClient.MCI.execute(() -> {
+                    if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
+                    TCClient.CODE_EDIT_MANAGER.stopEditing(CodeEditManager.EndCause.ABORTED);
+                });
+                respond(r, new AbortCodeEditC2AResponse());
+            }
+        }
         else if (request instanceof ChangeModeA2CRequest r) {
             if (TCClient.DF_STATE.getMode() == DFState.Mode.SPAWN) {
                 respond(r, new ErrorResponse(
@@ -363,7 +372,7 @@ public class APIConnectionHandler {
                 respond(r, new ErrorResponse(APIErrorCode.SCAN_IN_PROGRESS, "Plot is already being scanned."));
             } else {
                 TCClient.API_SERVER.setRequestAsPending(r, this);
-                TCClient.DF_STATE.scanPlot();
+                TCClient.MCI.execute(() -> TCClient.DF_STATE.scanPlot());
             }
         }
     }

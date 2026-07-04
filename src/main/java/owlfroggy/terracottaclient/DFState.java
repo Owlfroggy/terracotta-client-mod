@@ -388,6 +388,8 @@ implements
 
     /**
      * Updates plot bounds, size, and code contents
+     *
+     * NOTE: always call this via MCI.execute() or things will break
      */
     public void scanPlot() {
         if (isScanning()) {return;}
@@ -540,6 +542,11 @@ implements
     public void failScan(String errorMessage) {
         setScanState(ScanState.NOT_SCANNED);
         queuedChunkRescans.clear();
+        if (TCClient.MOVEMENT_MANAGER.getCurrentMovementId().equals("SCAN_QUEUED_CHUNK"))
+            TCClient.MOVEMENT_MANAGER.stopMovement();
+        if (ptpFuture != null) {
+            ptpFuture.cancel(true);
+        }
         APIServer.resolvePendingRequests(request -> {
             if (request instanceof RescanPlotA2CRequest r) {
                 return new ErrorResponse(APIErrorCode.SCAN_FAILED, errorMessage);

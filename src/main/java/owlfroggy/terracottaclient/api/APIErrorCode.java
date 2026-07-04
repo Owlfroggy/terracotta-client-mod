@@ -19,6 +19,7 @@ public enum APIErrorCode {
     SCAN_IN_PROGRESS,
     SCAN_FAILED,
 
+    NO_ACTIVE_EDIT,
     EDIT_IN_PROGRESS,
     EDIT_FAILED,
     EDIT_FAILED_LEFT_DEV,
