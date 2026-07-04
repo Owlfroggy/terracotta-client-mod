@@ -159,6 +159,21 @@ public class MsgHelper {
             .append(Component.literal("Call Function").withColor(0xFF55AA))
             .append(Component.literal(" blocks!").withStyle(ChatFormatting.YELLOW))
     );
+    static final Component MUST_BE_ON_PLOT_TEXT = (
+        Component.empty()
+            .append(Component.literal("Error: ").withStyle((ChatFormatting.RED)))
+            .append(Component.literal("You must be on a plot!").withStyle(ChatFormatting.GRAY))
+    );
+    static final Component NO_DEV_PERMS = (
+        Component.empty()
+            .append(Component.literal("Error: ").withStyle((ChatFormatting.RED)))
+            .append(Component.literal("You do not have dev permissions for this plot!").withStyle(ChatFormatting.GRAY))
+    );
+    static final Component NO_BUILD_PERMS = (
+        Component.empty()
+            .append(Component.literal("Error: ").withStyle((ChatFormatting.RED)))
+            .append(Component.literal("You do not have build permissions for this plot!").withStyle(ChatFormatting.GRAY))
+    );
     public static boolean isMessageLocateResult(Component message) {
         String[] messageStrLines = message.getString().split("\n");
         ClickEvent clickEvent = message.getStyle().getClickEvent();
@@ -168,6 +183,13 @@ public class MsgHelper {
                 (command.startsWith("/server") || command.startsWith("/join")) &&
                 messageStrLines.length >= 2 &&
                 messageStrLines[1].startsWith("You are currently")
+        );
+    }
+    public static boolean isMessageModeChangeFailure(Component message) {
+        return (
+            message.equals(MUST_BE_ON_PLOT_TEXT)
+            || message.equals(NO_BUILD_PERMS)
+            || message.equals(NO_DEV_PERMS)
         );
     }
 

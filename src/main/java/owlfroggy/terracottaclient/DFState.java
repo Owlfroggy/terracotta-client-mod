@@ -26,6 +26,7 @@ import owlfroggy.terracottaclient.api.APIErrorCode;
 import owlfroggy.terracottaclient.api.APIServer;
 import owlfroggy.terracottaclient.api.message.ErrorResponse;
 import owlfroggy.terracottaclient.api.message.Request;
+import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.*;
 import owlfroggy.terracottaclient.codespace.*;
 import owlfroggy.terracottaclient.gameinterface.*;
@@ -630,6 +631,17 @@ implements
 
         if (ptpFuture != null && !ptpFuture.isDone() && MsgHelper.isMessageOutOfBoundsError(message)) {
             ptpFuture.complete(Optional.empty());
+        }
+
+        if (MsgHelper.isMessageModeChangeFailure(message)) {
+            APIServer.resolvePendingRequests(r -> {
+                if (!(r instanceof ChangeModeA2CRequest)) return null;
+                if (message.equals(MsgHelper.MUST_BE_ON_PLOT_TEXT)) {
+                    return new ErrorResponse(APIErrorCode.AT_SPAWN, "Player is at spawn");
+                } else {
+                    return new ErrorResponse(APIErrorCode.NO_PERMISSION, "Player does not have permissions for this plot");
+                }
+            });
         }
 
         locateParser: if (MsgHelper.isMessageLocateResult(message)) {
