@@ -274,9 +274,8 @@ public class APIConnectionHandler {
             if (!(TCClient.DF_STATE.isScanning() || TCClient.CODE_EDIT_MANAGER.isEditingCode())) {
                 respond(r, new ErrorResponse(APIErrorCode.NO_ACTIVE_EDIT, "No active code edit operation to abort"));
             } else {
-                TCClient.LOGGER.info("aborting :D");
                 TCClient.MCI.execute(() -> {
-                    if (TCClient.DF_STATE.isScanning()) TCClient.DF_STATE.failScan("Plot scan was aborted");
+                    TCClient.DF_STATE.failScan("Plot scan was aborted");
                     TCClient.CODE_EDIT_MANAGER.stopEditing(CodeEditManager.EndCause.ABORTED);
                 });
                 respond(r, new AbortCodeEditC2AResponse());
