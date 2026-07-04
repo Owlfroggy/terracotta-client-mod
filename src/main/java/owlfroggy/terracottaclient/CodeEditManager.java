@@ -119,11 +119,15 @@ implements
     }
 
     public void stopEditing(EndCause cause) {
+        GlobalEditState oldEditState = editState;
         editState = GlobalEditState.IDLE;
-        if (oldOffhandItem != null) Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
-        if (oldFirstSlotItem != null) Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
 
-        TCClient.MCI.player.getInventory().setSelectedSlot(oldHeldSlot);
+        if (oldEditState != GlobalEditState.IDLE) {
+            if (oldOffhandItem != null) Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
+            if (oldFirstSlotItem != null) Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
+
+            TCClient.MCI.player.getInventory().setSelectedSlot(oldHeldSlot);
+        }
 
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(false);
         TCClient.MOVEMENT_MANAGER.stopMovement("CODE_EDIT");
