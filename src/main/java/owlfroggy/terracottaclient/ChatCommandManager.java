@@ -6,7 +6,8 @@ import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 import java.util.PriorityQueue;
 
 public class ChatCommandManager extends Manager implements TickEndReceiver {
-    private static final int COMMAND_COOLDOWN_TICKS = 5;
+    // commands will not be sent while commandCooldown > LIMIT
+    private final static int LIMIT = 100;
 
     private final PriorityQueue<String> commandQueue = new PriorityQueue<>();
     private int commandCooldown = 0;
@@ -27,6 +28,8 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
         if (TCClient.MCI.getConnection() == null) return;
         if (commandCooldown > 0) {
             commandCooldown--;
+        }
+        if (commandCooldown > LIMIT) {
             return;
         }
 
@@ -35,6 +38,6 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
 
         TCClient.MCI.getConnection().sendCommand(command);
         TCClient.LOGGER.info("Sending chat command: "+command);
-        commandCooldown = COMMAND_COOLDOWN_TICKS;
+        commandCooldown += 20;
     }
 }
