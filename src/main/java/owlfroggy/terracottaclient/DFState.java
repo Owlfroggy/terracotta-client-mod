@@ -47,6 +47,7 @@ implements
     ClientCommandReceiver,
     TickEndReceiver,
     PlotChangeReceiver,
+    ModeChangeReceiver,
     ChunkReceiver
 {
     public enum Mode {
@@ -387,6 +388,21 @@ implements
         TCClient.COMMAND_MANAGER.queueCommand("locate");
     }
 
+    public void forceChangeMode(Mode newMode) {
+        Mode oldMode = mode;
+        mode = newMode;
+        APIServer.resolvePendingRequests((Request request) -> {
+            if (request instanceof ChangeModeA2CRequest r) {
+                if (r.getMode() != mode)
+                    return new ErrorResponse(APIErrorCode.GENERIC_ERROR,"Something else changed the mode to %s instead of %s".formatted(mode,r.getMode()));
+
+                return new ChangeModeC2AResponse();
+            }
+            return null;
+        });
+        if (oldMode != mode) TCClient.fireModeChangeReceivers(mode);
+    }
+
     /**
      * Updates plot bounds, size, and code contents
      *
@@ -645,28 +661,18 @@ implements
         }
 
         locateParser: if (MsgHelper.isMessageLocateResult(message)) {
-            Mode oldMode = mode;
-
             Matcher modeMatcher = MODE_REGEX.matcher(messageStrLines[1]);
             if (!modeMatcher.find()) break locateParser;
 
+            Mode newMode = Mode.SPAWN;
             switch (modeMatcher.group(1)) {
-                case "coding" -> mode = Mode.DEV;
-                case "building" -> mode = Mode.BUILD;
-                case "playing" -> mode = Mode.PLAY;
-                case "spawn" -> mode = Mode.SPAWN;
+                case "coding" -> newMode = Mode.DEV;
+                case "building" -> newMode = Mode.BUILD;
+                case "playing" -> newMode = Mode.PLAY;
+                case "spawn" -> newMode = Mode.SPAWN;
             }
 
-            APIServer.resolvePendingRequests((Request request) -> {
-                if (request instanceof ChangeModeA2CRequest r) {
-                    if (r.getMode() != mode)
-                        return new ErrorResponse(APIErrorCode.GENERIC_ERROR,"Something else changed the mode to %s instead of %s".formatted(mode,r.getMode()));
-
-                    return new ChangeModeC2AResponse();
-                }
-                return null;
-            });
-            if (oldMode != mode) TCClient.fireModeChangeReceivers(mode);
+            forceChangeMode(newMode);
 
             modeRefreshQueued = false;
 
@@ -787,6 +793,12 @@ implements
         } else {
             setScanState(ScanState.NOT_SCANNED);
         }
+    }
+
+    @Override
+    public void onModeChanged(Mode newMode) {
+        if (newMode != Mode.DEV && isScanning())
+            failScan("Player left dev mode mid-scan.");
     }
 
     @Override

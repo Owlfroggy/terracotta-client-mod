@@ -409,7 +409,11 @@ public class TCClient implements ClientModInitializer {
             loadedChunks.remove(worldChunk.getPos());
         });
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            TCClient.DF_STATE.forceChangeMode(DFState.Mode.SPAWN);
             loadedChunks.clear();
+        });
+        ClientPlayConnectionEvents.DISCONNECT.register((phase, listener) -> {
+            TCClient.DF_STATE.forceChangeMode(DFState.Mode.SPAWN);
         });
     }
 
