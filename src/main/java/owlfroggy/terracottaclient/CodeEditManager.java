@@ -173,6 +173,17 @@ implements
 
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(true);
 
+        // count how many new templates will be added to the plot
+        int newTemplateCount = 0;
+        for (String template : placeTemplates) {
+            try {
+                TemplateIdentifier id = TemplateDataUtils.getIdentifier(TemplateDataUtils.parseTemplateData(template));
+                if (TCClient.DF_STATE.getTemplateByIdentifier(id) == null) {
+                    newTemplateCount++;
+                }
+            } catch (Exception ignored) {}
+        }
+
         //TODO: make it be able to take positions from templates that are being deleted
         Queue<Vec3i> openPositions = new LinkedList<>(); //plot space
         int bottomFloor = TCClient.DF_STATE.hasUndergroundCodespace() ? 5 : 50;
@@ -180,12 +191,12 @@ implements
             for (int rowX = -2; rowX >= -17; rowX -= 3) {
                 if (TCClient.DF_STATE.getFloor(floorY).getRow(rowX).templates.isEmpty()) {
                     openPositions.add(new Vec3i(rowX,floorY,0));
-                    if (openPositions.size() >= placeTemplates.length) break openFinderLoop;
+                    if (openPositions.size() >= newTemplateCount) break openFinderLoop;
                 }
             }
         }
 
-        if (openPositions.size() < placeTemplates.length) {
+        if (openPositions.size() < newTemplateCount) {
             throw new Exception("Not enough space is present in the codespace to place all templates");
         }
 
