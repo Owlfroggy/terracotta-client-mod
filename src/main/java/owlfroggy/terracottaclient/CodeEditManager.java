@@ -187,8 +187,12 @@ implements
         //TODO: make it be able to take positions from templates that are being deleted
         Queue<Vec3i> openPositions = new LinkedList<>(); //plot space
         int bottomFloor = TCClient.DF_STATE.hasUndergroundCodespace() ? 5 : 50;
+        int maxRow = (
+            TCClient.DF_STATE.getPlotType() == DFState.PlotType.MEGA ||
+            TCClient.DF_STATE.getPlotType() == DFState.PlotType.WORLD
+        ) ? -296 : -17;
         openFinderLoop: for (int floorY = bottomFloor; floorY <= 250; floorY += 5) {
-            for (int rowX = -2; rowX >= -17; rowX -= 3) {
+            for (int rowX = -2; rowX >= maxRow; rowX -= 3) {
                 if (TCClient.DF_STATE.getFloor(floorY).getRow(rowX).templates.isEmpty()) {
                     openPositions.add(new Vec3i(rowX,floorY,0));
                     if (openPositions.size() >= newTemplateCount) break openFinderLoop;
