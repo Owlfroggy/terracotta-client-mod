@@ -103,6 +103,9 @@ implements
     private ItemStack oldFirstSlotItem;
     private int oldHeldSlot = 0;
 
+    private boolean progressMadeThisTick = false;
+    private int stuckDetectorCount = 0;
+
     private ItemStack getReachExtender() {
         if (REACH_EXTENDER == null) {
             this.REACH_EXTENDER = Utils.applyReachToItem(new ItemStack(Items.ARROW), "editor_reach_thingy");
@@ -170,6 +173,7 @@ implements
         oldOffhandItem = TCClient.MCI.player.getInventory().getItem(Inventory.SLOT_OFFHAND);
         oldFirstSlotItem = TCClient.MCI.player.getInventory().getItem(TEMPLATE_VACUUM_SLOT);
         oldHeldSlot = TCClient.MCI.player.getInventory().getSelectedSlot();
+        stuckDetectorCount = 0;
 
         TCClient.MOVEMENT_MANAGER.setShouldHoldFastSpeed(true);
 
@@ -270,6 +274,7 @@ implements
                     // block was successfully broken
                     if (blockState.getBlock() == Blocks.AIR && !cameFromClient) {
                         edit.breakWasDefinitelySuccessful = true;
+                        progressMadeThisTick = true;
                         if (edit.action == CodeEdit.Action.REPLACE) {
                             edit.state = CodeEdit.State.PLACING;
                         } else {
@@ -287,6 +292,7 @@ implements
                         blockState.getBlock() != Blocks.DYED_TERRACOTTA.lightBlue() &&
                         !cameFromClient
                     ) {
+                        progressMadeThisTick = true;
                         edit.state = CodeEdit.State.DONE;
                     } else {
                         edit.state = CodeEdit.State.PLACING;
@@ -312,6 +318,24 @@ implements
 
                     break codeEditLogic;
                 }
+
+                // send an info message in chat saying how to cancel editing if the placer has maybe gotten stuck
+                if (stuckDetectorCount != -1) {
+                    if (!progressMadeThisTick) {
+                            stuckDetectorCount += 1;
+                            if (stuckDetectorCount > 40) {
+                                MsgHelper.safeTCMessage(Component.translatable(
+                                    "terracotta-client.editor.stuck",
+                                    Component.literal("/tcstopediting").withColor(MsgHelper.COLOR.TC_ORANGE)
+                                ));
+                                stuckDetectorCount = -1;
+                            }
+                    } else {
+                        stuckDetectorCount = 0;
+                    }
+                }
+
+                progressMadeThisTick = false;
 
                 // make sure the player is always trying to be in the right position
                 Vec3 goalPos = TCClient.MCI.player.position();

@@ -57,5 +57,7 @@
   "terracotta-client.config.value.connection_message_type.description": "The type of message (if any) to\nsend in chat when a known app\nconnects to Terracotta Client\n\n§eVerbose:§r Displays the connecting\napp's abilities in chat and provides\na button to manage its permissions\n\n§eMinimal:§r Just sends a notice that\nthe app connected in chat, includes\nno further information beyond the\napp's name\n\n§eNone:§r Does not send a notification\nwhen known apps connect",
   "terracotta-client.config.value.connection_message_type.option.VERBOSE": "Verbose",
   "terracotta-client.config.value.connection_message_type.option.MINIMAL": "Minimal",
-  "terracotta-client.config.value.connection_message_type.option.NONE": "None"
+  "terracotta-client.config.value.connection_message_type.option.NONE": "None",
+
+  "terracotta-client.editor.stuck": "If the code editor has gotten stuck, run %1$s to abort."
 }
