@@ -1,12 +1,19 @@
 package owlfroggy.terracottaclient;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.Vec3i;
+import owlfroggy.terracottaclient.gameinterface.ChatMessageReceiver;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
-public class MovementManager extends Manager implements TickEndReceiver, TeleportReceiver {
+public class MovementManager extends Manager
+implements
+    TickEndReceiver,
+    TeleportReceiver,
+    ChatMessageReceiver
+{
     enum MovementState {
         NOT_MOVING,
         /**
@@ -30,6 +37,7 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     private boolean movementSpeedIsModified = false;
     private boolean holdFastSpeed = false;
     private int idleTicks = 0;
+    private int ticksSinceLastMoveSpeedConfirmation = 0;
 
     public boolean shouldHideNextFlightSpeedMsg = false;
 
@@ -46,8 +54,21 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
                 movementSpeedIsModified = false;
             }
             return;
+        } else {
+            // if movement speed somehow gets turned back down to 0, re-send the command
+            if (
+                movementSpeedIsModified
+                && TCClient.MCI.player.getAbilities().getFlyingSpeed() != 0.5
+                && ticksSinceLastMoveSpeedConfirmation > 5
+                && !shouldHideNextFlightSpeedMsg
+                && !TCClient.COMMAND_MANAGER.isCommandQueued("flightspeed 1000")
+            ) {
+                TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000",DFState.Mode.DEV);
+                shouldHideNextFlightSpeedMsg = true;
+            }
         }
         idleTicks = 0;
+        ticksSinceLastMoveSpeedConfirmation++;
 
         // skip avoid_code if we're already at that y level
         if (currentMovementState == MovementState.AVOID_CODE && assumedPlayerPos.y == assumedPlayerPos.y - (assumedPlayerPos.y%5) + 2.2) {
@@ -103,6 +124,13 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
         }
     }
 
+    @Override
+    public void onChatMessage(Component message) {
+        if (MsgHelper.isMessageFlightSpeed(message)) {
+            ticksSinceLastMoveSpeedConfirmation = 0;
+        }
+    }
+
     /**
      * Note: this function assumes that the target is not in a block
      * @param plotSpaceDestination The position to move to
@@ -154,4 +182,6 @@ public class MovementManager extends Manager implements TickEndReceiver, Telepor
     public String getCurrentMovementId() {
         return currentMovementId;
     }
+
+
 }

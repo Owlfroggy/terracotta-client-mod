@@ -24,6 +24,10 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
         }
     }
 
+    public boolean isCommandQueued(String commandToCheck) {
+        return commandQueue.contains(commandToCheck);
+    }
+
     public void onTickEnd(Minecraft client) {
         if (TCClient.MCI.getConnection() == null) return;
         if (commandCooldown > 0) {
