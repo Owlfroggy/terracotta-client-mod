@@ -24,6 +24,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class APIServer extends WebSocketServer {
+    // WARNING! turning this on will result in app tokens being leaked in logs
     public static final boolean LOGS_ENABLED = false;
 
     private boolean serverIsOpen = false;
