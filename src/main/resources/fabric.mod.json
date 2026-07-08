@@ -3,15 +3,15 @@
 	"id": "terracotta-client",
 	"version": "${version}",
 	"name": "Terracotta Client",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Enables easy development using Terracotta by allowing external applications (such as VSCode) to interface directly with DiamondFire.\n\nReport bugs on the Discord or GitHub.",
 	"authors": [
 		"Owlfroggy"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://owlfroggy.github.io/terracotta-docs/",
+		"sources": "https://github.com/Owlfroggy/terracotta-client-mod"
 	},
-	"license": "CC0-1.0",
+	"license": "BSD-3-Clause",
 	"icon": "assets/terracotta-client/icon.png",
 	"environment": "client",
 	"entrypoints": {
@@ -31,7 +31,11 @@
 		"java": ">=25",
 		"fabric-api": "*"
 	},
-	"suggests": {
-		"another-mod": "*"
-	}
+    "custom": {
+        "modmenu": {
+            "links": {
+               "modmenu.discord": "https://discord.gg/at9uBFXPxy"
+            }
+        }
+    }
 }
