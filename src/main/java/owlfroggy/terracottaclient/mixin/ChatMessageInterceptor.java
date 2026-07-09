@@ -1,6 +1,5 @@
 package owlfroggy.terracottaclient.mixin;
 
-import ca.weblite.objc.annotations.Msg;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import org.spongepowered.asm.mixin.Mixin;
