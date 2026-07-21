@@ -120,4 +120,12 @@ public class Utils {
             return null;
         }
     }
+
+    public static boolean teleportedOutOfCodespace(Vec3 newPos, Vec3 oldPos) {
+        return (
+            TCClient.DF_STATE.getPlotOrigin() != null
+            && !TCClient.DF_STATE.isWorldPosInCodespace(newPos)
+            && TCClient.DF_STATE.isWorldPosInCodespace(oldPos)
+        );
+    }
 }

@@ -33,10 +33,7 @@ import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
 import owlfroggy.terracottaclient.codespace.*;
-import owlfroggy.terracottaclient.gameinterface.ClientBlockUpdateReceiver;
-import owlfroggy.terracottaclient.gameinterface.ChunkReceiver;
-import owlfroggy.terracottaclient.gameinterface.ModeChangeReceiver;
-import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
+import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.mixin.SequencedPacketAccessor;
 
 import java.util.*;
@@ -46,7 +43,8 @@ implements
     ChunkReceiver,
     ClientBlockUpdateReceiver,
     TickEndReceiver,
-    ModeChangeReceiver
+    ModeChangeReceiver,
+    TeleportReceiver
 {
     private class CodeEdit {
         public enum Action {
@@ -579,6 +577,14 @@ implements
     @Override
     public void onModeChanged(DFState.Mode newMode) {
         if (newMode != DFState.Mode.DEV) {
+            stopEditing(EndCause.LEFT_DEV_MODE);
+        }
+    }
+
+    @Override
+    public void onTeleported(Vec3 newPos, Vec3 oldPos) {
+        // if you get teleported out of the codespace, cancel the edit
+        if (isEditingCode() && Utils.teleportedOutOfCodespace(newPos, oldPos)) {
             stopEditing(EndCause.LEFT_DEV_MODE);
         }
     }

@@ -129,6 +129,13 @@ implements
             }
             lastDimensionNamespace = dimensionNamespace;
         }
+
+        // stop moving when being teleported outside of the codespace
+        if (currentMovementState != MovementState.NOT_MOVING && Utils.teleportedOutOfCodespace(newPos, oldPos)) {
+            TCClient.MCI.player.getAbilities().flying = false;
+            TCClient.MCI.player.onUpdateAbilities();
+            stopMovement();
+        }
     }
 
     @Override
@@ -175,7 +182,7 @@ implements
     }
 
     public void stopMovement(String movementId) {
-        if (movementId != null && currentMovementId != null && movementId != currentMovementId) { return; }
+        if (movementId != null && currentMovementId != null && !movementId.equals(currentMovementId)) { return; }
         currentMovementState = MovementState.NOT_MOVING;
         currentMovementId = "";
     }

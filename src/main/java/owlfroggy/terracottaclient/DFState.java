@@ -300,7 +300,7 @@ implements
         int chunkZ = chunkPos.z();
 
         Vec3 plotOrigin = TCClient.DF_STATE.getPlotOrigin();
-        if (plotOrigin == null) return;
+        if (plotOrigin == null || scanState == ScanState.NOT_SCANNED || scanState == ScanState.SCANNING_BOUNDS) return;
         if (!TCClient.isChunkLoaded(chunkPos)) return;;
 
         if (queuedChunkRescans.contains(chunkPos)) {
@@ -427,7 +427,6 @@ implements
 
                 PlotType currentSizeGuess = PlotType.BASIC;
                 Optional<Vec3> teleportResult = Optional.empty();
-                Vec3 plotOriginGuess = null;
                 useWorldPlotScanRoutine = false;
 
                 plotScanTargetPos.set(null);
@@ -451,7 +450,7 @@ implements
                     }
                     // if the player stayed in the codespace, that means the plot origin is now known
                     else {
-                        plotOriginGuess = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
+                        plotOrigin = result.get().multiply(1, 0, 1).add(1.0, 0.0, 0.0);
                     }
                 } catch (Exception e) {
                     throw new RuntimeException("Plot scan failed during origin fetch due to not receiving a teleport response");
@@ -469,11 +468,11 @@ implements
                         Vec3 newPos = result.get();
 
                         doesHaveUndergroundCodespace = newPos.y == 5;
-                        plotOriginGuess = newPos.multiply(1.0,0.0,1.0).add(11.5, 0.0, -10.5);
+                        plotOrigin = newPos.multiply(1.0,0.0,1.0).add(11.5, 0.0, -10.5);
 
                         // wait until chunk loads or else things break spectacularly
                         int ticksWaited = 0;
-                        while (!TCClient.isChunkLoaded(plotOriginGuess)) {
+                        while (!TCClient.isChunkLoaded(plotOrigin)) {
                             if (ticksWaited > 20*5) throw new RuntimeException("Failed to get world plot data");
                             Thread.sleep(50);
                             ticksWaited++;
@@ -506,7 +505,7 @@ implements
                             }
                         }
 
-                        plotScanTargetPos.set(plotSpacePos.add(plotOriginGuess));
+                        plotScanTargetPos.set(plotSpacePos.add(plotOrigin));
                         String command = String.format("ptp %s %s %s", plotSpacePos.x, plotSpacePos.y, plotSpacePos.z);
 
                         TCClient.COMMAND_MANAGER.queueCommand(command, true);
@@ -526,8 +525,6 @@ implements
                     }
                 }
 
-
-                plotOrigin = plotOriginGuess;
                 plotType = currentSizeGuess;
 
                 Vec3 minusCorner = getPlotCorner(CodespaceCorner.BACK_LEFT);
@@ -615,6 +612,10 @@ implements
             && (plotScanTargetPos.get() == null || newPos.closerThan(plotScanTargetPos.get(),0.01))
         ) {
             ptpFuture.complete(Optional.of(newPos));
+        }
+
+        if (scanState == ScanState.SCANNING_CODE && Utils.teleportedOutOfCodespace(newPos, oldPos)) {
+            failScan("Player was teleported out of the codespace mid-scan.");
         }
 //        TCClient.MCI.player.sendMessage(Text.literal(newPos.toString()),false);
     }
