@@ -437,7 +437,7 @@ implements
                 // get plot origin
                 // tries teleporting to x -1 so that plots without a buildspace (worldplots) still work
                 ptpFuture = new CompletableFuture<>();
-                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0", TP_MAGIC_Y_VALUE));
+                TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -1.0 %s 0.0", TP_MAGIC_Y_VALUE), true);
                 try {
                     Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
                     if (result.isEmpty())
@@ -462,7 +462,7 @@ implements
                     // teleport to codespace spawn and work out plot origin/underground status from there
                     // it's fine to skip the size loop here since world plots can only ever have one size of codespace
                     ptpFuture = new CompletableFuture<>();
-                    TCClient.COMMAND_MANAGER.queueCommand("p s -d");
+                    TCClient.COMMAND_MANAGER.queueCommand("p s -d", true);
                     try {
                         Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
                         if (result.isEmpty()) throw new RuntimeException("Failed to get world plot data");
@@ -486,7 +486,7 @@ implements
                 else {
                     // test for underground codespace
                     ptpFuture = new CompletableFuture<>();
-                    TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4", TP_MAGIC_Y_VALUE_UNDERGROUND));
+                    TCClient.COMMAND_MANAGER.queueCommand(String.format("ptp -4 %s 4", TP_MAGIC_Y_VALUE_UNDERGROUND), true);
                     try {
                         Optional<Vec3> result = ptpFuture.get(5, TimeUnit.SECONDS);
                         if (result.isPresent()) doesHaveUndergroundCodespace = true;
@@ -509,7 +509,7 @@ implements
                         plotScanTargetPos.set(plotSpacePos.add(plotOriginGuess));
                         String command = String.format("ptp %s %s %s", plotSpacePos.x, plotSpacePos.y, plotSpacePos.z);
 
-                        TCClient.COMMAND_MANAGER.queueCommand(command);
+                        TCClient.COMMAND_MANAGER.queueCommand(command, true);
                         ptpFuture = new CompletableFuture<>();
                         try {
                             teleportResult = ptpFuture.get(5, TimeUnit.SECONDS);

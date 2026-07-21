@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.core.Vec3i;
 import owlfroggy.terracottaclient.gameinterface.ChatMessageReceiver;
+import owlfroggy.terracottaclient.gameinterface.ModeChangeReceiver;
 import owlfroggy.terracottaclient.gameinterface.TeleportReceiver;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
@@ -53,7 +54,7 @@ implements
         if (currentMovementState == MovementState.NOT_MOVING) {
             idleTicks++;
             if (idleTicks > 3 && movementSpeedIsModified && !holdFastSpeed) {
-                TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed "+oldMovementSpeed, DFState.Mode.DEV);
+                TCClient.COMMAND_MANAGER.queueCommandIfInMode("flightspeed "+oldMovementSpeed, DFState.Mode.DEV);
                 shouldHideNextFlightSpeedMsg = true;
                 movementSpeedIsModified = false;
             }
@@ -67,7 +68,7 @@ implements
                 && !shouldHideNextFlightSpeedMsg
                 && !TCClient.COMMAND_MANAGER.isCommandQueued("flightspeed 1000")
             ) {
-                TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000",DFState.Mode.DEV);
+                TCClient.COMMAND_MANAGER.queueCommandIfInMode("flightspeed 1000",DFState.Mode.DEV);
                 shouldHideNextFlightSpeedMsg = true;
             }
         }
@@ -123,7 +124,7 @@ implements
         String dimensionNamespace = TCClient.MCI.level.dimension().identifier().getNamespace();
         if (!dimensionNamespace.equals(lastDimensionNamespace)) {
             if (movementSpeedIsModified) {
-                TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
+                TCClient.COMMAND_MANAGER.queueCommandIfInMode("flightspeed 1000", DFState.Mode.DEV);
                 shouldHideNextFlightSpeedMsg = true;
             }
             lastDimensionNamespace = dimensionNamespace;
@@ -146,7 +147,7 @@ implements
 
         if (!movementSpeedIsModified && TCClient.DF_STATE.hasRank(DFState.Rank.NOBLE)) {
             oldMovementSpeed = (int)(TCClient.MCI.player.getAbilities().getFlyingSpeed()*100/.05);
-            TCClient.COMMAND_MANAGER.queueCommandIfInImode("flightspeed 1000", DFState.Mode.DEV);
+            TCClient.COMMAND_MANAGER.queueCommandIfInMode("flightspeed 1000", DFState.Mode.DEV);
             shouldHideNextFlightSpeedMsg = true;
             movementSpeedIsModified = true;
         }
