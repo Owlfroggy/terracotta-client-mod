@@ -24,7 +24,11 @@ implements
         ALIGN_Y,
     }
 
-    public static final double MOVEMENT_SPEED = 50; //50;
+    public static final double RANKED_MOVEMENT_SPEED = 50; //50;
+    public static final double UNRANKED_MOVEMENT_SPEED = 5; //50;
+    public static double getMovementSpeed() {
+        return TCClient.DF_STATE.hasRank(DFState.Rank.NOBLE) ? RANKED_MOVEMENT_SPEED : UNRANKED_MOVEMENT_SPEED;
+    }
 
     private Vec3 destinationPos;
     private Vec3 assumedPlayerPos;
@@ -88,8 +92,10 @@ implements
             TCClient.MCI.player.onUpdateAbilities();
         }
 
+        double movementSpeed = getMovementSpeed();
+
         double dist = targetPos.distanceTo(assumedPlayerPos);
-        Vec3 movementVec = targetPos.subtract(assumedPlayerPos).normalize().scale(Math.min(dist,MOVEMENT_SPEED));
+        Vec3 movementVec = targetPos.subtract(assumedPlayerPos).normalize().scale(Math.min(dist,movementSpeed));
         assumedPlayerPos = assumedPlayerPos.add(movementVec);
         TCClient.MCI.player.setPos(assumedPlayerPos);
 
@@ -100,7 +106,7 @@ implements
             return;
         }
 
-        if (dist < MOVEMENT_SPEED) {
+        if (dist < movementSpeed) {
             currentMovementState = MovementState.values()[(currentMovementState.ordinal() + 1) % 4];
             TCClient.MCI.player.setDeltaMovement(0,0,0);
         }
