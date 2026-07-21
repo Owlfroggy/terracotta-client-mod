@@ -197,7 +197,15 @@ implements
         ) ? -296 : -17;
         openFinderLoop: for (int floorY = bottomFloor; floorY <= 250; floorY += 5) {
             for (int rowX = -2; rowX >= maxRow; rowX -= 3) {
-                if (TCClient.DF_STATE.getFloor(floorY).getRow(rowX).templates.isEmpty()) {
+                boolean isFree = true;
+                // make sure the space around the position is clear as well
+                for (int xMod = -2; xMod <= 2; xMod++) {
+                    if (!TCClient.DF_STATE.isTemplateRowEmpty(floorY,rowX+xMod)) {
+                        isFree = false;
+                        break;
+                    }
+                }
+                if (isFree) {
                     openPositions.add(new Vec3i(rowX,floorY,0));
                     if (openPositions.size() >= newTemplateCount) break openFinderLoop;
                 }

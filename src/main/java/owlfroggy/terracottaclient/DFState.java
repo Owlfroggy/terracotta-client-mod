@@ -202,6 +202,13 @@ implements
         }
     }
 
+    public boolean isTemplateRowEmpty(int yLevel, int plotXPos) {
+        if (!floors.containsKey(yLevel)) return true;
+        CodespaceFloor floor = floors.get(yLevel);
+        if (!floor.rows.containsKey(plotXPos)) return true;
+        return floor.rows.get(plotXPos).templates.isEmpty();
+    }
+
     public ArrayList<CachedTemplate> getTemplatesByName(TemplateType type, String name) {
         return templatesByName.get(type).get(name);
     }
