@@ -123,7 +123,7 @@ implements
         GlobalEditState oldEditState = editState;
         editState = GlobalEditState.IDLE;
 
-        if (oldEditState != GlobalEditState.IDLE) {
+        if (oldEditState != GlobalEditState.IDLE && cause != EndCause.LEFT_DEV_MODE) {
             if (oldOffhandItem != null) Utils.setItemInSlot(Inventory.SLOT_OFFHAND, oldOffhandItem);
             if (oldFirstSlotItem != null) Utils.setItemInSlot(TEMPLATE_VACUUM_SLOT, oldFirstSlotItem);
 
