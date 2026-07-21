@@ -700,7 +700,7 @@ implements
 
         whoisParser: if (MsgHelper.isMessageWhoisResult(message)) {
             String playerName = TCClient.MCI.player.getName().getString();
-            if (!messageStrLines[1].equals("Profile of "+playerName+ " "))
+            if (!messageStrLines[1].startsWith("Profile of "+playerName+ " "))
                 break whoisParser;
 
             hideNextWhois = false;
