@@ -2,6 +2,7 @@ package owlfroggy.terracottaclient;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Style;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -284,13 +285,13 @@ implements
         BlockEntity blockEntity = TCClient.MCI.level.getBlockEntity(blockPos);
         if (blockEntity instanceof SignBlockEntity sign) {
             // check if this is a header
-            Component topLine = sign.getFrontText().getMessage(0,false);
+            Component topLine = sign.getText(SignTextSlot.FRONT).getMessages(false).get(0);;
             if (!NAMES_TO_TEMPLATE_TYPES.containsKey(topLine.getString())) return;
             if (!TCClient.DF_STATE.isWorldPosInCodespace(blockPos)) return;
             TemplateType templateType = NAMES_TO_TEMPLATE_TYPES.get(topLine.getString());
 
             // add template
-            String templateName = sign.getFrontText().getMessage(1,false).getString();
+            String templateName = sign.getText(SignTextSlot.FRONT).getMessages(false).get(1).getString();
             addTemplate(templateType, templateName, templatePos);
         };
     }

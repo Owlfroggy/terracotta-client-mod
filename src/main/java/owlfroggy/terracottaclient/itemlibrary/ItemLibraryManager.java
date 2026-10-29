@@ -21,7 +21,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import owlfroggy.terracottaclient.Manager;
 import owlfroggy.terracottaclient.TCClient;
@@ -167,7 +166,7 @@ implements
         if (libraryData == null) return;
 
         Window handle = TCClient.MCI.getWindow();
-        boolean isShiftDown = InputConstants.isKeyDown(handle, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(handle, GLFW.GLFW_KEY_RIGHT_SHIFT);
+        boolean isShiftDown = InputConstants.isKeyDown(InputConstants.KEY_LSHIFT) || InputConstants.isKeyDown(InputConstants.KEY_RSHIFT);
         if (isShiftDown) {
             lines.add(Component.literal("(terracotta library item,").withStyle(ChatFormatting.DARK_GRAY));
             lines.add(Component.literal("edits are being synced live)").withStyle(ChatFormatting.DARK_GRAY));

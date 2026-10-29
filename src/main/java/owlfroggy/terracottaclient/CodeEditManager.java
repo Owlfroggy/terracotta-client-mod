@@ -439,7 +439,7 @@ implements
                                 int maxInactivityCycles = 10 + client.getConnection().getPlayerInfo(client.player.getUUID()).getLatency()*50/1000;
                                 CodeEdit.State oldState = activeEdit.state;
                                 if (activeEdit.inactivityCycles > maxInactivityCycles) {
-                                    if (client.level.getBlockState(new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
+                                    if (client.level.getBlockState(Utils.toBlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos))).getBlock() == Blocks.AIR) {
                                         activeEdit.state = switch (activeEdit.action) {
                                             case REPLACE, PLACE -> CodeEdit.State.PLACING;
                                             case BREAK -> CodeEdit.State.DONE;
@@ -487,7 +487,7 @@ implements
                                 client.getConnection().send(new ServerboundPlayerInputPacket(sneakInput));
 
                                 // break
-                                BlockPos pos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
+                                BlockPos pos = Utils.toBlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
                                 ((SequencedPacketAccessor)client.gameMode).invokeStartPrediction(TCClient.MCI.level, sequence -> {
                                     TCClient.MCI.gameMode.destroyBlock(pos);
                                     return new ServerboundPlayerActionPacket(net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, pos, Direction.UP, sequence);
@@ -530,7 +530,7 @@ implements
                                 Utils.setItemInSlot(Inventory.SLOT_OFFHAND, item);
 
                                 // place item
-                                BlockPos blockPos = new BlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
+                                BlockPos blockPos = Utils.toBlockPos(TCClient.DF_STATE.toWorldSpace(activeEdit.plotSpacePos));
                                 BlockHitResult hit = new BlockHitResult(
                                     new Vec3(blockPos),
                                     Direction.DOWN,

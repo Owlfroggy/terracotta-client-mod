@@ -2,7 +2,6 @@ package owlfroggy.terracottaclient.mixin;
 
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ClientChunkCache;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData;
 import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.world.level.ChunkPos;
@@ -21,7 +20,7 @@ import java.util.function.Consumer;
 @Mixin(ClientChunkCache.class)
 public class ChunkLoadInterceptor {
     @Inject(method = "replaceWithPacketData", at = @At("RETURN"))
-    private void onChunkLoad(int x, int z, FriendlyByteBuf buf, Map<Heightmap.Types, long[]> heightmaps, Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer, CallbackInfoReturnable<LevelChunk> cir) {
+    private void onChunkLoad(int chunkX, int chunkZ, ClientboundLevelChunkPacketData chunkData, CallbackInfoReturnable<LevelChunk> cir) {
         LevelChunk worldChunk = cir.getReturnValue();
         TCClient.loadedChunks.put(worldChunk.getPos(),worldChunk);
         TCClient.fireChunkLoadReceivers(worldChunk.getPos());

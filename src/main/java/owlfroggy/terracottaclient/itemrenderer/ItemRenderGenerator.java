@@ -1,11 +1,11 @@
 package owlfroggy.terracottaclient.itemrenderer;
 
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.buffers.GpuBufferSlice;
-import com.mojang.blaze3d.systems.CommandEncoder;
+
+import com.mojang.renderpearl.api.GpuFormat;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
+import com.mojang.renderpearl.api.textures.GpuTexture;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
 import net.minecraft.client.Minecraft;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
@@ -71,7 +71,7 @@ public class ItemRenderGenerator {
             "itemRender",
             16 * renderScale,
             16 * renderScale,
-            true,
+            GpuFormat.RGBA8_UNORM,
                 GpuFormat.RGBA8_UNORM // this HAS to be RGBA8_UNORM or else everything breakss
         );
 

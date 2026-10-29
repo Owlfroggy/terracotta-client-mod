@@ -10,11 +10,11 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner;
 import net.minecraft.client.gui.screens.inventory.tooltip.DefaultTooltipPositioner;
+import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
-import org.lwjgl.glfw.GLFW;
 import owlfroggy.terracottaclient.MsgHelper;
 import owlfroggy.terracottaclient.TCClient;
 import owlfroggy.terracottaclient.api.APIConnectionHandler;
@@ -235,7 +235,7 @@ public class ConfigListWidget extends TCListWidget<ConfigListWidget.ConfigEntry>
                     try {
                         Enum<?> existingValue = (Enum<?>)field.get(null);
                         var enumConstants = existingValue.getDeclaringClass().getEnumConstants();
-                        boolean isShiftDown = InputConstants.isKeyDown(TCClient.MCI.getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(TCClient.MCI.getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
+                        boolean isShiftDown = InputConstants.isKeyDown(InputConstants.KEY_LSHIFT) || InputConstants.isKeyDown(InputConstants.KEY_RSHIFT);
                         int nextOrdinal = existingValue.ordinal() + (isShiftDown ? -1 : 1);
                         if (nextOrdinal > enumConstants.length-1)
                             nextOrdinal = 0;

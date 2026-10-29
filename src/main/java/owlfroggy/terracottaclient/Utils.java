@@ -2,6 +2,7 @@ package owlfroggy.terracottaclient;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.serialization.DataResult;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
@@ -51,6 +52,10 @@ public class Utils {
             (double) vec.getY(),
             (double) vec.getZ()
         );
+    }
+
+    public static BlockPos toBlockPos(Vec3i vec3i) {
+        return new BlockPos(vec3i.getX(), vec3i.getY(), vec3i.getZ());
     }
 
     public static ItemStack applyReachToItem(ItemStack item, String attributeId) {
