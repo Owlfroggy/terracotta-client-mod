@@ -2,6 +2,7 @@ package owlfroggy.terracottaclient.config;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.fabricmc.loader.api.FabricLoader;
 import owlfroggy.terracottaclient.TCClient;
 
 import java.io.IOException;
@@ -24,9 +25,17 @@ public class Config {
     @ConfigValue(key = "use_highres_icon", order = 40)
     public static boolean useHighresIcon = true;
 
+    @ConfigValue(key = "codeclient_compatability", order = 50)
+    public static CodeClientCompatMode codeClientCompatMode = CodeClientCompatMode.AUTO;
+
 
     private static Path CONFIG_FILE_PATH = TCClient.getConfigPath().resolve("config.json");
 
+    public static boolean enableCodeClientCompatability() {
+        if (codeClientCompatMode == CodeClientCompatMode.ON) return true;
+        if (codeClientCompatMode == CodeClientCompatMode.OFF) return false;
+        return FabricLoader.getInstance().isModLoaded("codeclient");
+    }
 
     public static void load() {
         try {

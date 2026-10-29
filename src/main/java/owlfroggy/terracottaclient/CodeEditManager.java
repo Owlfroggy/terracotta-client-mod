@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
@@ -18,10 +19,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
-import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundSectionBlocksUpdatePacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.phys.BlockHitResult;
@@ -33,6 +30,7 @@ import owlfroggy.terracottaclient.api.message.Response;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditA2CRequest;
 import owlfroggy.terracottaclient.api.message.impl.InitiateCodeEditC2AResponse;
 import owlfroggy.terracottaclient.codespace.*;
+import owlfroggy.terracottaclient.config.Config;
 import owlfroggy.terracottaclient.gameinterface.*;
 import owlfroggy.terracottaclient.mixin.SequencedPacketAccessor;
 
@@ -537,7 +535,20 @@ implements
                                     blockPos,
                                     false
                                 );
-                                TCClient.MCI.gameMode.useItemOn(client.player, InteractionHand.OFF_HAND, hit);
+
+                                // codeclient messes up the useItemOn() function for some reason,
+                                // without this placing midair breaks when codeclient is enabled
+                                if (Config.enableCodeClientCompatability()) {
+                                    client.getConnection().send(
+                                        new ServerboundUseItemOnPacket(
+                                            InteractionHand.OFF_HAND,
+                                            hit,
+                                            0
+                                        )
+                                    );
+                                } else {
+                                    TCClient.MCI.gameMode.useItemOn(client.player, InteractionHand.OFF_HAND, hit);
+                                }
 
                                 activeEdit.state = CodeEdit.State.WAITING_FOR_PLACE_VERIFICATION;
                             }

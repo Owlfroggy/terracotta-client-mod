@@ -60,6 +60,11 @@
   "terracotta-client.config.value.connection_message_type.option.NONE": "None",
   "terracotta-client.config.value.use_highres_icon.name": "Use High Resolution Icon",
   "terracotta-client.config.value.use_highres_icon.description": "Determines whether to use the\nhigher (%T$s) or lower (%t$s)\nresolution Terracotta icon in\nTerracotta's messages.",
+  "terracotta-client.config.value.codeclient_compatability.name": "CodeClient Compatability Mode",
+  "terracotta-client.config.value.codeclient_compatability.description": "Changes how the mod edits code\nto make it more compatible with\n CodeClient.\n\n\"Auto\" will turn this option on if\nCodeClient is installed and leave\nit off otherwise.",
+  "terracotta-client.config.value.codeclient_compatability.option.ON": "On",
+  "terracotta-client.config.value.codeclient_compatability.option.AUTO": "Auto",
+  "terracotta-client.config.value.codeclient_compatability.option.OFF": "Off",
 
   "terracotta-client.editor.stuck": "If the code editor has gotten stuck, run %1$s to abort."
 }
