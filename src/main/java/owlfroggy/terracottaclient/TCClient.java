@@ -3,6 +3,7 @@ package owlfroggy.terracottaclient;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import de.johni0702.minecraft.bobby.Bobby;
 import de.johni0702.minecraft.bobby.ext.ClientChunkCacheExt;
 import net.fabricmc.api.ClientModInitializer;
 
@@ -429,7 +430,7 @@ public class TCClient implements ClientModInitializer {
 
     public static boolean isChunkLoaded(ChunkPos chunkPos) {
         // don't count chunks as loaded if they're only being loaded by bobby
-        if (FabricLoader.getInstance().isModLoaded("bobby")) {
+        if (FabricLoader.getInstance().isModLoaded("bobby") && Bobby.getInstance().isEnabled()) {
             ClientChunkCacheExt cache = (ClientChunkCacheExt) TCClient.MCI.level.getChunkSource();
             LevelChunk fakeChunk = cache.bobby_getFakeChunkManager().getChunk(chunkPos.x(), chunkPos.z());
             if (fakeChunk != null) return false;
