@@ -297,7 +297,9 @@ public class APIConnectionHandler {
                 return;
             }
             TCClient.API_SERVER.setRequestAsPending(r,this);
+            TCClient.DF_STATE.forceChangeMode(r.getMode());
             TCClient.COMMAND_MANAGER.queueCommand("mode "+r.getMode());
+            TCClient.DF_STATE.queueModeRefresh(true);
         }
         else if (request instanceof StartEditingItemA2CRequest r) {
             TCClient.ITEM_LIBRARY_MANAGER.startEditingItem(getId(),r.getItemId(),r.getSnbt(),r.getItemDataVersion());

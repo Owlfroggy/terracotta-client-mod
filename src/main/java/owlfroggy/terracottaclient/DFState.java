@@ -390,10 +390,11 @@ implements
         );
     }
 
-    public void queueModeRefresh() {
+    public void queueModeRefresh() {queueModeRefresh(false);}
+    public void queueModeRefresh(boolean lowPriority) {
         if (modeRefreshQueued) return;
         modeRefreshQueued = true;
-        TCClient.COMMAND_MANAGER.queueCommand("locate");
+        TCClient.COMMAND_MANAGER.queueCommand("locate", lowPriority);
     }
 
     public void forceChangeMode(Mode newMode) {
