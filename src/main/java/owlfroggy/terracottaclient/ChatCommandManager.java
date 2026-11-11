@@ -1,6 +1,7 @@
 package owlfroggy.terracottaclient;
 
 import net.minecraft.client.Minecraft;
+import org.jetbrains.annotations.NotNull;
 import owlfroggy.terracottaclient.gameinterface.TickEndReceiver;
 
 import java.util.PriorityQueue;
@@ -9,8 +10,14 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
     // commands will not be sent while commandCooldown > LIMIT
     private final static int LIMIT = 100;
 
-    private final PriorityQueue<String> highPriorityQueue = new PriorityQueue<>();
-    private final PriorityQueue<String> lowPriorityQueue = new PriorityQueue<>();
+    private record QueuedCommand(String command, DFState.Mode requiredMode) implements Comparable<QueuedCommand> {
+        @Override
+        public int compareTo(@NotNull ChatCommandManager.QueuedCommand o) {
+            return command.compareTo(o.command);
+        }
+    }
+    private final PriorityQueue<QueuedCommand> highPriorityQueue = new PriorityQueue<>();
+    private final PriorityQueue<QueuedCommand> lowPriorityQueue = new PriorityQueue<>();
     private int rateLimitMeasure = 0;
     private int lowPriorityCooldown = 0;
 
@@ -21,22 +28,25 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
      *
      *                    commands with lowPriority set will wait until there are no high priority commands
      *                    queued and will also have a cooldown applied
+     * @param mode sets the mode required for the command to run (dev, build, play).
+     *             set to null to ignore
      */
-    public void queueCommand(String command, boolean lowPriority) {
+    public void queueCommand(String command, boolean lowPriority, DFState.Mode mode) {
         if (lowPriority) {
-            lowPriorityQueue.add(command);
+            lowPriorityQueue.add(new QueuedCommand(command, mode));
         } else {
-            highPriorityQueue.add(command);
+            highPriorityQueue.add(new QueuedCommand(command, mode));
         }
     }
-    public void queueCommand(String command) {queueCommand(command, false);}
-    public void queueCommandIfInMode(String command, DFState.Mode mode, boolean lowPriority) {
-        if (TCClient.DF_STATE.getMode() == mode) {
-            queueCommand(command, lowPriority);
-        }
-    }
+    public void queueCommand(String command) {queueCommand(command, false, null);}
+    public void queueCommand(String command, boolean lowPriority) {queueCommand(command, lowPriority, null);}
     public void queueCommandIfInMode(String command, DFState.Mode mode) {
         queueCommandIfInMode(command, mode, false);
+    }
+    public void queueCommandIfInMode(String command, DFState.Mode mode, boolean lowPriority) {
+        if (TCClient.DF_STATE.getMode() == mode) {
+            queueCommand(command, lowPriority, mode);
+        }
     }
 
     public boolean isCommandQueued(String commandToCheck) {
@@ -50,7 +60,7 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
 
         if (rateLimitMeasure > LIMIT) return;
 
-        String command = null;
+        QueuedCommand command = null;
         String priorityLogMessageString = "";
         if (!highPriorityQueue.isEmpty()) {
             command = highPriorityQueue.poll();
@@ -62,10 +72,13 @@ public class ChatCommandManager extends Manager implements TickEndReceiver {
             priorityLogMessageString = "low priority ";
         }
 
-        if (command == null) return;
+        if (command == null || command.command == null) return;
 
-        TCClient.MCI.getConnection().sendCommand(command);
-        TCClient.LOGGER.info("Sending {}chat command: {}", priorityLogMessageString, command);
+        if (command.requiredMode != null && TCClient.DF_STATE.getMode() != command.requiredMode) return;
+        TCClient.MCI.getConnection().sendCommand(command.command);
+        TCClient.LOGGER.info("Sending {}chat command: {} in mode {}", priorityLogMessageString, command, TCClient.DF_STATE.getMode());
         rateLimitMeasure += 20;
     }
+
+
 }
